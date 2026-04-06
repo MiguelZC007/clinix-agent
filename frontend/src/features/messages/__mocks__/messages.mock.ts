@@ -1,0 +1,163 @@
+import type { Conversation, Message } from '../types/message.types';
+
+export const CURRENT_USER_ID = 'doctor-1';
+
+const now = new Date();
+
+export const MOCK_CONVERSATIONS: Conversation[] = [
+  {
+    id: '1',
+    model: 'gpt-4o-mini',
+    systemPrompt: 'Eres el asistente del médico.',
+    summary: 'Consulta sobre tratamiento con Juan Pérez',
+    lastActivityAt: new Date(now.getTime() - 1000 * 60 * 5),
+    isActive: true,
+    doctorId: 'doctor-1',
+    createdAt: new Date(now.getTime() - 1000 * 60 * 60),
+    updatedAt: now,
+    contextTokensUsed: 1200,
+    contextTokenLimit: 120_000,
+    title: 'Consulta sobre tratamiento con Juan Pérez',
+  },
+  {
+    id: '2',
+    model: 'gpt-4o-mini',
+    systemPrompt: 'Eres el asistente del médico.',
+    summary: undefined,
+    lastActivityAt: new Date(now.getTime() - 1000 * 60 * 30),
+    isActive: false,
+    doctorId: 'doctor-1',
+    createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 2),
+    updatedAt: now,
+    contextTokensUsed: 0,
+    contextTokenLimit: 120_000,
+    title: 'Conversación 30 ene',
+  },
+  {
+    id: '3',
+    model: 'gpt-4o-mini',
+    systemPrompt: 'Eres el asistente del médico.',
+    summary: 'Resultados de exámenes de sangre',
+    lastActivityAt: new Date(now.getTime() - 1000 * 60 * 60 * 2),
+    isActive: false,
+    doctorId: 'doctor-1',
+    createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 3),
+    updatedAt: now,
+    contextTokensUsed: 800,
+    contextTokenLimit: 120_000,
+    title: 'Resultados de exámenes de sangre',
+  },
+];
+
+export const MOCK_MESSAGES: Record<string, Message[]> = {
+  '1': [
+    {
+      id: 'm1',
+      conversationId: '1',
+      role: 'user',
+      content: 'Buenos días, necesito consultar sobre un tratamiento',
+      tokenCount: 12,
+      readAt: undefined,
+      createdAt: new Date(now.getTime() - 1000 * 60 * 60),
+      updatedAt: now,
+    },
+    {
+      id: 'm2',
+      conversationId: '1',
+      role: 'assistant',
+      content: 'Buenos días. ¿Sobre qué tratamiento necesita información?',
+      tokenCount: 15,
+      readAt: now,
+      createdAt: new Date(now.getTime() - 1000 * 60 * 55),
+      updatedAt: now,
+    },
+    {
+      id: 'm3',
+      conversationId: '1',
+      role: 'user',
+      content: 'El paciente Juan Pérez con dolores de cabeza frecuentes',
+      tokenCount: 10,
+      readAt: now,
+      createdAt: new Date(now.getTime() - 1000 * 60 * 50),
+      updatedAt: now,
+    },
+    {
+      id: 'm4',
+      conversationId: '1',
+      role: 'assistant',
+      content: 'Puedo ayudarle a registrar la consulta o revisar historial. ¿Qué desea hacer?',
+      tokenCount: 18,
+      readAt: now,
+      createdAt: new Date(now.getTime() - 1000 * 60 * 45),
+      updatedAt: now,
+    },
+    {
+      id: 'm5',
+      conversationId: '1',
+      role: 'user',
+      content: 'Gracias, ya quedó claro',
+      tokenCount: 5,
+      readAt: now,
+      createdAt: new Date(now.getTime() - 1000 * 60 * 5),
+      updatedAt: now,
+    },
+  ],
+  '2': [
+    {
+      id: 'm6',
+      conversationId: '2',
+      role: 'user',
+      content: 'Hola, necesito registrar presión arterial de María González',
+      tokenCount: 12,
+      readAt: now,
+      createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 2),
+      updatedAt: now,
+    },
+    {
+      id: 'm7',
+      conversationId: '2',
+      role: 'assistant',
+      content: 'Puedo ayudarle. ¿Tiene los valores de presión arterial?',
+      tokenCount: 14,
+      readAt: now,
+      createdAt: new Date(now.getTime() - 1000 * 60 * 30),
+      updatedAt: now,
+    },
+  ],
+  '3': [
+    {
+      id: 'm8',
+      conversationId: '3',
+      role: 'user',
+      content: 'Los exámenes de sangre de Carlos López ya están listos',
+      tokenCount: 12,
+      readAt: now,
+      createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 3),
+      updatedAt: now,
+    },
+    {
+      id: 'm9',
+      conversationId: '3',
+      role: 'assistant',
+      content: 'Puedo registrar los resultados en la historia clínica. ¿Desea que los ingrese?',
+      tokenCount: 20,
+      readAt: now,
+      createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 2.5),
+      updatedAt: now,
+    },
+    {
+      id: 'm10',
+      conversationId: '3',
+      role: 'user',
+      content: '¿A qué hora puede pasar por los resultados?',
+      tokenCount: 8,
+      readAt: undefined,
+      createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 2),
+      updatedAt: now,
+    },
+  ],
+};
+
+export function getMockMessagesByConversationId(conversationId: string): Message[] {
+  return MOCK_MESSAGES[conversationId] || [];
+}

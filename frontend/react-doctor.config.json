@@ -1,0 +1,21 @@
+{
+  "diff": false,
+  "ignore": {
+    "files": [
+      "**/__tests__/**",
+      "**/__mocks__/**",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/setup.ts",
+      "**/test-utils.tsx",
+      "**/handlers.ts",
+      "**/server.ts",
+      ".example.*",
+      "vitest.config.ts",
+      "src/features/twilio/api/whatsapp.api.ts",
+      "src/features/twilio/schemas/whatsapp.schema.ts",
+      "src/features/twilio/types/whatsapp.types.ts"
+    ],
+    "rules": ["knip/exports"]
+  }
+}

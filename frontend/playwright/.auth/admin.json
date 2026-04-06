@@ -1,0 +1,59 @@
+{
+  "cookies": [
+    {
+      "name": "NEXT_LOCALE",
+      "value": "es",
+      "domain": "localhost",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "next-auth.csrf-token",
+      "value": "f7082e7bc4299340fa93866d1bc188974c11432ca3fc665139dc991580f19dcc%7C14e585efd12973fedf780252c46a1261339e06419cdcbdd8ddb34f16d4bec069",
+      "domain": "localhost",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "next-auth.callback-url",
+      "value": "http%3A%2F%2Flocalhost%3A4301",
+      "domain": "localhost",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "next-auth.session-token",
+      "value": "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..Opf3bH4GPUGxD6BR.b6QEqZnJF-0MOtkUYvHJMOGQccR-H_yg71Sw5hbJkzlOY3LR01BkIQkLH3Kyh654s9-xy6T-oqbSo1rrkPoB-IRG_EtFm_j8ubWXjBiNemQiY_8_JljZ_Taipefyta-LWA0xskLi2wnaWdz8FzyrmXR3VZFVhR3S08JH9O4a7cPUzafKQGytcs5k1aAxoTka2r35Y6fhZ1gpEuH8DmpG4YV9NkaX6cBSoHh78nFsuyWoMlxNsiaHVw2qChB02uwOu56VCDe1J3C1Ot4oJtxkU9G8iEQ_oDQvOAo8niTJa9o5jcwweyws5l7EImZCSP_sfLxTchdbY4WGs4eoW3uCham3uC3vpD_Ofcu0WALUC66bdXvaD4i0ITgAq9D_cVCt-xuevnuPKLgbl8j059Lmu1TNog5K1RJHDao55jyp7gr20mDC5Z2a68FPDAFP6SrOKXZIhoGusPMgMz6vHAkVVoTbnuD2MXVQpU8EzgdgFCB1lD_-UGVmiTvY0XtURJzv5BiFNlpqXwz4sSnzQaS4tpcDRL_T0nX1YNyUwOnDnZVXFMVoV5l8x8dy6KqqB-9p6EfkqbKgxT28i7O3ueKoy0Xt3tkIY0QbfMjv25VQraLF_1tKcpw7mdbHRbviatV54u49tvxCG_5KtbsWLqFUi7vIpnnt5RKnDLUzF_PGZeq72K3E.B25SGoszce9Uj0j3UDLmqA",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1777845912.275415,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:3002",
+      "localStorage": [
+        {
+          "name": "nextauth.message",
+          "value": "{\"event\":\"session\",\"data\":{\"trigger\":\"getSession\"},\"timestamp\":1775253909}"
+        },
+        {
+          "name": "clinix-sidebar-collapsed",
+          "value": "false"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "name": "clinix-agent",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "scripts": {
+    "preinstall": "npx only-allow pnpm",
+    "dev": "pnpm --filter ./frontend run dev & pnpm --filter ./backend run dev",
+    "dev:frontend": "pnpm --filter ./frontend run dev",
+    "dev:backend": "pnpm --filter ./backend run dev",
+    "build": "pnpm --filter ./backend run build && pnpm --filter ./frontend run build",
+    "test": "pnpm --filter ./backend run test && pnpm --filter ./frontend run test",
+    "lint": "pnpm --filter ./backend run lint && pnpm --filter ./frontend run lint"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.33.0"
+}

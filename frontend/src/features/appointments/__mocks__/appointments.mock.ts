@@ -1,0 +1,136 @@
+import type { Appointment } from '../types/appointment.types';
+
+const today = new Date();
+const tomorrow = new Date(today);
+tomorrow.setDate(tomorrow.getDate() + 1);
+const dayAfter = new Date(today);
+dayAfter.setDate(dayAfter.getDate() + 2);
+const nextWeek = new Date(today);
+nextWeek.setDate(nextWeek.getDate() + 7);
+
+export const MOCK_APPOINTMENTS: Appointment[] = [
+  {
+    id: '1',
+    patientId: 'patient-1',
+    patientName: 'Juan Pérez',
+    patientInitials: 'JP',
+    date: today,
+    startTime: '09:00',
+    endTime: '09:30',
+    reason: 'Control rutinario',
+    status: 'scheduled',
+    specialtyId: 'spec-1',
+  },
+  {
+    id: '2',
+    patientId: 'patient-2',
+    patientName: 'María González',
+    patientInitials: 'MG',
+    date: today,
+    startTime: '10:30',
+    endTime: '11:00',
+    reason: 'Dolor de cabeza persistente',
+    status: 'scheduled',
+    specialtyId: 'spec-1',
+  },
+  {
+    id: '3',
+    patientId: 'patient-3',
+    patientName: 'Carlos López',
+    patientInitials: 'CL',
+    date: today,
+    startTime: '11:30',
+    endTime: '12:00',
+    reason: 'Revisión post-operatoria',
+    status: 'completed',
+    specialtyId: 'spec-2',
+  },
+  {
+    id: '4',
+    patientId: 'patient-4',
+    patientName: 'Ana Martínez',
+    patientInitials: 'AM',
+    date: today,
+    startTime: '14:00',
+    endTime: '14:45',
+    reason: 'Primera consulta',
+    status: 'scheduled',
+    specialtyId: 'spec-1',
+  },
+  {
+    id: '5',
+    patientId: 'patient-5',
+    patientName: 'Roberto Sánchez',
+    patientInitials: 'RS',
+    date: tomorrow,
+    startTime: '09:30',
+    endTime: '10:00',
+    reason: 'Control de presión arterial',
+    status: 'scheduled',
+    specialtyId: 'spec-1',
+  },
+  {
+    id: '6',
+    patientId: 'patient-6',
+    patientName: 'Elena Rodríguez',
+    patientInitials: 'ER',
+    date: tomorrow,
+    startTime: '11:00',
+    endTime: '11:30',
+    reason: 'Exámenes de laboratorio',
+    status: 'scheduled',
+    specialtyId: 'spec-2',
+  },
+  {
+    id: '7',
+    patientId: 'patient-7',
+    patientName: 'Pedro Fernández',
+    patientInitials: 'PF',
+    date: dayAfter,
+    startTime: '10:00',
+    endTime: '10:30',
+    reason: 'Consulta dermatológica',
+    status: 'scheduled',
+    specialtyId: 'spec-1',
+  },
+  {
+    id: '8',
+    patientId: 'patient-8',
+    patientName: 'Lucía Morales',
+    patientInitials: 'LM',
+    date: dayAfter,
+    startTime: '15:00',
+    endTime: '15:45',
+    reason: 'Control prenatal',
+    status: 'scheduled',
+    specialtyId: 'spec-2',
+  },
+  {
+    id: '9',
+    patientId: 'patient-9',
+    patientName: 'Miguel Torres',
+    patientInitials: 'MT',
+    date: nextWeek,
+    startTime: '09:00',
+    endTime: '09:30',
+    reason: 'Seguimiento tratamiento',
+    status: 'scheduled',
+    specialtyId: 'spec-1',
+  },
+  {
+    id: '10',
+    patientId: 'patient-10',
+    patientName: 'Carmen Díaz',
+    patientInitials: 'CD',
+    date: today,
+    startTime: '16:00',
+    endTime: '16:30',
+    reason: 'Cita cancelada por paciente',
+    status: 'cancelled',
+    specialtyId: 'spec-2',
+  },
+];
+
+export function getMockAppointmentById(id: string): Appointment | undefined {
+  return MOCK_APPOINTMENTS.find((appointment) => appointment.id === id);
+}
