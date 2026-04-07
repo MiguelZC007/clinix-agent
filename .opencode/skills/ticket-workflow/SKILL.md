@@ -247,6 +247,21 @@ Round 3: Clean → APPROVED ✅
 
 ## Phase 5: Commit & Push
 
+### 5.0 GGA Review Gate (MANDATORY BEFORE COMMIT)
+
+**Run Gentleman Guardian Angel before creating any commit.**
+
+```bash
+# From repo root / product repo
+gga --pr-mode
+```
+
+**Project-specific expectation:**
+- `.gga` is the source of review configuration
+- `AGENTS.md` provides the review rules
+- If GGA reports actionable issues, fix them BEFORE commit
+- Do not commit while GGA is still reporting unresolved problems for the change
+
 ### 5.1 Conventional Commits
 
 **Format:**

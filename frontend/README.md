@@ -1,44 +1,154 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Clinix Frontend
+
+Frontend web para Clinix, construido con **Next.js 15**, **React 19**, **next-intl** y **NextAuth**.
+
+## Stack
+
+- Next.js 15
+- React 19
+- TypeScript
+- Tailwind CSS 4
+- Vitest + Testing Library
+- Playwright para E2E
+- Node.js >= 22
+- pnpm >= 10
+
+## Qué hace este proyecto
+
+La app web cubre los flujos principales del dashboard médico:
+
+- login y sesión
+- administración de doctores
+- pacientes
+- citas
+- historias clínicas
+- mensajería y dashboard
+
+## Instalación
+
+```bash
+pnpm install
+```
+
+## Variables de entorno
+
+Crear y completar:
+
+- `.env.local`
+
+Variables importantes:
+
+- `NEXT_PUBLIC_API_URL=http://localhost:4000/v1`
+- `NEXTAUTH_URL=http://localhost:4301`
+- variables de auth necesarias para NextAuth
+
+## Desarrollo
+
+```bash
+pnpm dev
+```
+
+Por defecto el proyecto suele correrse en:
+
+- `http://localhost:4301`
 
 ## Tests
 
-- **Unitarios (MSW):** `pnpm test` — ejecuta todos los tests unitarios con MSW. No requiere backend levantado.
-- **Integración (backend real):** `pnpm test:integration` — verifica la conexión frontend-backend. Requiere:
-  - Backend NestJS en puerto **4000** (o `NEXT_API_URL` apuntando al backend).
-  - Base de datos con migraciones aplicadas y seed ejecutado (`pnpm prisma:seed` en `backend/`).
-- Variables en `frontend/.env.local`: `NEXT_API_URL`, `TEST_PHONE`, `TEST_PASSWORD` (ver `docs/E2E_INTEGRATION.md`).
-
-## Getting Started
-
-First, run the development server:
+### Unitarios
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm test
+pnpm test:watch
+pnpm test:ui
+pnpm test:coverage
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Integración frontend-backend
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm test:integration
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Requiere:
 
-## Learn More
+- backend levantado en `http://localhost:4000`
+- base de datos preparada
+- seed ejecutado en `backend/`
 
-To learn more about Next.js, take a look at the following resources:
+### E2E con Playwright
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm test:e2e
+pnpm test:e2e:ui
+pnpm test:e2e:debug
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Ejemplo para correr solo RBAC-3:
 
-## Deploy on Vercel
+```bash
+pnpm test:e2e --grep "RBAC-3" --project=chromium-admin
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Credenciales E2E
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+La fuente de verdad para credenciales de prueba está en:
+
+- `e2e/fixtures/test-credentials.ts`
+
+Referencia humana:
+
+- `e2e/TEST_CREDENTIALS.md`
+
+Estas credenciales dependen de haber ejecutado:
+
+```bash
+cd ../backend
+pnpm prisma:seed
+```
+
+## Auth de Playwright
+
+Los storage states locales de Playwright **no deben subirse a git**.
+
+La carpeta ignorada es:
+
+- `playwright/.auth/`
+
+Los setup files generan esos estados localmente:
+
+- `e2e/auth.setup.ts`
+- `e2e/auth-admin.setup.ts`
+
+## Scripts útiles
+
+```bash
+# lint
+pnpm lint
+
+# build
+pnpm build
+
+# diagnóstico React
+pnpm doctor
+```
+
+## Estructura general
+
+```text
+src/
+  app/          # app router
+  features/     # features por dominio
+  lib/          # utilidades compartidas
+  messages/     # i18n
+e2e/
+  admin/
+  auth/
+  pages/
+  fixtures/
+```
+
+## Notas
+
+- La API base por defecto apunta a `http://localhost:4000/v1`.
+- Si corrés E2E admin, necesitás backend, frontend, DB y seed listos.
+- El proyecto usa convenciones por feature (`src/features/{domain}`), así que cualquier README o doc futura debería respetar esa organización.
