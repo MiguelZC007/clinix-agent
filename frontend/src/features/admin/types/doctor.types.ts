@@ -1,3 +1,7 @@
+import type { UserRole } from "@/lib/auth/types";
+
+export type { UserRole };
+
 export type Doctor = {
   id: string;
   userId: string;
@@ -11,6 +15,8 @@ export type Doctor = {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  /** Transitional: present only when backend supports role management */
+  role?: UserRole;
 };
 
 export type CreateDoctorRequest = {
@@ -23,7 +29,10 @@ export type CreateDoctorRequest = {
   password?: string;
 };
 
-export type UpdateDoctorRequest = Partial<Omit<CreateDoctorRequest, 'email' | 'phone' | 'password'>>;
+export type UpdateDoctorRequest = Partial<Omit<CreateDoctorRequest, 'email' | 'phone' | 'password'>> & {
+  /** Transitional: include only when backend supports role management */
+  role?: UserRole;
+};
 
 export type DoctorsListParams = {
   page?: number;

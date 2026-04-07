@@ -1,13 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { LoginPage } from '../pages/auth/login-page';
-
-// Test credentials from seed (see TEST_CREDENTIALS.md)
-// Note: PhoneInputWithCountry splits phone into country selector + number input
-// Default country is Bolivia (+591), so we just need to type the number part
-const DOCTOR_CREDENTIALS = {
-  phone: '70000002',  // Doctor user - Without country code - Bolivia (+591) is default
-  password: 'Doctor123!',
-};
+import { E2E_TEST_CREDENTIALS } from '../fixtures/test-credentials';
 
 const INVALID_CREDENTIALS = {
   phone: '99999999',  // Invalid number
@@ -53,7 +46,7 @@ test.describe('Authentication', () => {
   });
 
   test('should login successfully with valid credentials', async ({ page }) => {
-    await loginPage.login(DOCTOR_CREDENTIALS.phone, DOCTOR_CREDENTIALS.password);
+    await loginPage.login(E2E_TEST_CREDENTIALS.doctor.phoneInput, E2E_TEST_CREDENTIALS.doctor.password);
     
     // Wait for redirect
     await page.waitForURL(/\/(dashboard|patients|es)/, { timeout: 15000 }).catch(() => {

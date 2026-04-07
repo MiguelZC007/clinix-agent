@@ -195,4 +195,197 @@ test.describe('Admin Doctors Management', () => {
       }
     });
   });
+
+  test.describe('RBAC-3: Role Change with Confirmation', () => {
+    const mockDoctorId = '123e4567-e89b-12d3-a456-426614174000';
+    const doctorEndpoint = `**/v1/admin/doctors/${mockDoctorId}`;
+    const specialtiesEndpoint = '**/v1/appointments/specialties';
+
+    const mockDoctorResponse = {
+      success: true,
+      data: {
+        id: mockDoctorId,
+        userId: 'user-123',
+        name: 'John',
+        lastName: 'Doe',
+        email: 'john.doe@clinix.com',
+        phone: '+549111234567',
+        licenseNumber: 'MN12345',
+        role: 'DOCTOR',
+        specialty: { id: '1', name: 'Cardiología' },
+        specialtyId: '1',
+        specialtyName: 'Cardiología',
+        status: 'active',
+        isActive: true,
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    test.beforeEach(async ({ page }) => {
+      page.route(doctorEndpoint, async (route) => {
+        if (route.request().method() === 'GET') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(mockDoctorResponse),
+          });
+          return;
+        }
+
+        await route.continue();
+      });
+
+      page.route(specialtiesEndpoint, async (route) => {
+        if (route.request().method() === 'GET') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              success: true,
+              data: [
+                { id: '1', name: 'Cardiología' },
+                { id: '2', name: 'Pediatría' },
+                { id: '3', name: 'Medicina General' },
+              ],
+              timestamp: new Date().toISOString(),
+            }),
+          });
+          return;
+        }
+
+        await route.continue();
+      });
+    });
+
+    test('should show confirmation dialog when changing doctor role', async ({ page }) => {
+      await doctorFormPage.gotoEdit(mockDoctorId);
+
+      await doctorFormPage.form.waitFor({ state: 'visible', timeout: 10000 });
+
+      await doctorFormPage.selectRole('Admin');
+
+      await doctorFormPage.submit();
+
+      const confirmDialog = page.locator('[role="alertdialog"]');
+      await expect(confirmDialog).toBeVisible({ timeout: 5000 });
+
+      await expect(confirmDialog).toContainText('Confirmar cambio de rol');
+    });
+
+    test('should confirm role change and proceed successfully', async ({ page }) => {
+      await page.route(doctorEndpoint, async (route) => {
+        if (route.request().method() === 'GET') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(mockDoctorResponse),
+          });
+          return;
+        }
+
+        if (route.request().method() === 'PATCH') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              success: true,
+              data: {
+                ...mockDoctorResponse.data,
+                role: 'ADMIN',
+              },
+              timestamp: new Date().toISOString(),
+            }),
+          });
+          return;
+        }
+
+        await route.continue();
+      });
+
+      await doctorFormPage.gotoEdit(mockDoctorId);
+
+      await doctorFormPage.form.waitFor({ state: 'visible', timeout: 10000 });
+
+      await doctorFormPage.selectRole('Admin');
+
+      await doctorFormPage.submit();
+
+      const confirmDialog = page.locator('[role="alertdialog"]');
+      await expect(confirmDialog).toBeVisible({ timeout: 5000 });
+
+      const confirmBtn = page.locator('[role="alertdialog"] button:not([disabled]):has-text("Confirmar cambio")').first();
+      await confirmBtn.click();
+
+      await page.waitForURL(/\/es\/admin\/doctors$/, { timeout: 10000 });
+    });
+
+    test('should rollback role in UI after backend rejection', async ({ page }) => {
+      const originalRole = 'Doctor';
+      const newRole = 'Admin';
+
+      await doctorFormPage.gotoEdit(mockDoctorId);
+
+      await doctorFormPage.form.waitFor({ state: 'visible', timeout: 10000 });
+
+      await page.route(doctorEndpoint, async (route) => {
+        if (route.request().method() === 'GET') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(mockDoctorResponse),
+          });
+          return;
+        }
+
+        if (route.request().method() === 'PATCH') {
+          await route.fulfill({
+            status: 403,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              message: 'Role change not allowed',
+              error: 'FORBIDDEN',
+            }),
+          });
+          return;
+        }
+        await route.continue();
+      });
+
+      await doctorFormPage.selectRole(newRole);
+
+      await doctorFormPage.submit();
+
+      const confirmDialog = page.locator('[role="alertdialog"]');
+      await expect(confirmDialog).toBeVisible({ timeout: 5000 });
+
+      const confirmBtn = page.locator('[role="alertdialog"] button:not([disabled]):has-text("Confirmar cambio")').first();
+      await confirmBtn.click();
+
+      const roleSelect = page.locator('[data-testid="select-role"]');
+      await expect(roleSelect).toContainText(originalRole, { timeout: 5000 });
+    });
+
+    test('should cancel role change and keep the unsaved selected role in the form', async ({ page }) => {
+      await doctorFormPage.gotoEdit(mockDoctorId);
+
+      await doctorFormPage.form.waitFor({ state: 'visible', timeout: 10000 });
+
+      await doctorFormPage.selectRole('Admin');
+
+      await doctorFormPage.submit();
+
+      const confirmDialog = page.locator('[role="alertdialog"]');
+      await expect(confirmDialog).toBeVisible({ timeout: 5000 });
+
+      const cancelBtn = page.locator('[role="alertdialog"] button:has-text("Cancelar")').first();
+      await cancelBtn.click();
+
+      await expect(confirmDialog).not.toBeVisible({ timeout: 5000 });
+
+      const roleSelect = page.locator('[data-testid="select-role"]');
+      await expect(roleSelect).toContainText('Admin', { timeout: 5000 });
+    });
+  });
 });

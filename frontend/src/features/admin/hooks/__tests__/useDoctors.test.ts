@@ -217,6 +217,62 @@ describe('useUpdateDoctor', () => {
 
     expect(doctor.name).toBe('Actualizado');
   });
+
+  it('envía role en PATCH cuando se incluye en el payload', async () => {
+    const updates = { role: 'ADMIN' as const };
+    const updatedDoctor = {
+      id: '1',
+      userId: 'user-1',
+      email: 'doctor@example.com',
+      name: 'Carlos',
+      lastName: 'García',
+      phone: '+584241234567',
+      specialtyId: 'spec-1',
+      specialtyName: 'Cardiología',
+      licenseNumber: 'MP-12345',
+      isActive: true,
+      createdAt: '2024-01-15T10:00:00Z',
+      updatedAt: '2024-01-20T10:00:00Z',
+      role: 'ADMIN' as const,
+    };
+
+    vi.mocked(doctorsApi.updateDoctor).mockResolvedValue(updatedDoctor);
+
+    const { result } = renderHook(() => useUpdateDoctor());
+
+    const doctor = await result.current.mutate('1', updates);
+
+    expect(doctorsApi.updateDoctor).toHaveBeenCalledWith('1', { role: 'ADMIN' });
+    expect(doctor.role).toBe('ADMIN');
+  });
+
+  it('funciona correctamente sin role cuando el backend no lo soporta', async () => {
+    const updates = { name: 'Solo Nombre' };
+    const updatedDoctor = {
+      id: '1',
+      userId: 'user-1',
+      email: 'doctor@example.com',
+      name: 'Solo Nombre',
+      lastName: 'García',
+      phone: '+584241234567',
+      specialtyId: 'spec-1',
+      specialtyName: 'Cardiología',
+      licenseNumber: 'MP-12345',
+      isActive: true,
+      createdAt: '2024-01-15T10:00:00Z',
+      updatedAt: '2024-01-20T10:00:00Z',
+      // no role field — backend without role support
+    };
+
+    vi.mocked(doctorsApi.updateDoctor).mockResolvedValue(updatedDoctor);
+
+    const { result } = renderHook(() => useUpdateDoctor());
+
+    const doctor = await result.current.mutate('1', updates);
+
+    expect(doctorsApi.updateDoctor).toHaveBeenCalledWith('1', { name: 'Solo Nombre' });
+    expect(doctor.role).toBeUndefined();
+  });
 });
 
 describe('useDeactivateDoctor', () => {

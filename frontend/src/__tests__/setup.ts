@@ -91,6 +91,20 @@ global.ResizeObserver = vi.fn().mockImplementation(function ResizeObserver() {
   };
 });
 
+// Radix UI Select requires these DOM APIs in JSDOM
+if (!HTMLElement.prototype.hasPointerCapture) {
+  HTMLElement.prototype.hasPointerCapture = () => false;
+}
+if (!HTMLElement.prototype.setPointerCapture) {
+  HTMLElement.prototype.setPointerCapture = () => {};
+}
+if (!HTMLElement.prototype.releasePointerCapture) {
+  HTMLElement.prototype.releasePointerCapture = () => {};
+}
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}
+
 vi.mock("next-intl", async () => {
   const actual = await vi.importActual("next-intl");
   return {

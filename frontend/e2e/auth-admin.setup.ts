@@ -1,13 +1,7 @@
 import { test as setup, expect } from '@playwright/test';
+import { E2E_TEST_CREDENTIALS } from './fixtures/test-credentials';
 
 const authFile = 'playwright/.auth/admin-role.json';
-
-// Admin credentials from seed (see TEST_CREDENTIALS.md)
-// Admin has role ADMIN and can access admin endpoints
-const ADMIN_CREDENTIALS = {
-  phoneInput: '70000001',  // Admin user - Without country code
-  password: 'Admin123!',
-};
 
 setup('authenticate as admin user', async ({ page }) => {
   // Set longer timeout for auth setup
@@ -25,8 +19,8 @@ setup('authenticate as admin user', async ({ page }) => {
   const passwordInput = page.locator('input[type="password"]').first();
   const submitBtn = page.locator('button[type="submit"]').first();
   
-  await phoneInput.fill(ADMIN_CREDENTIALS.phoneInput);
-  await passwordInput.fill(ADMIN_CREDENTIALS.password);
+  await phoneInput.fill(E2E_TEST_CREDENTIALS.admin.phoneInput);
+  await passwordInput.fill(E2E_TEST_CREDENTIALS.admin.password);
   
   // Click submit and wait for navigation
   await Promise.all([

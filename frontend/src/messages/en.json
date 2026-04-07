@@ -327,7 +327,18 @@
     "notFoundDescription": "The requested doctor does not exist",
     "specialtiesLoadError": "Error loading specialties",
     "filterBySpecialty": "Filter by specialty",
-    "allSpecialties": "All specialties"
+    "allSpecialties": "All specialties",
+    "role": "Role",
+    "roleHelper": "Change the doctor's role in the system",
+    "roleUnsupported": "Role management is not yet available (requires backend support)",
+    "roleSelfDemotion": "You cannot change your own Administrator role",
+    "roleConfirmTitle": "Confirm role change",
+    "roleConfirmDescription": "Are you sure you want to change the role from {from} to {to}? This action affects the user's permissions in the system.",
+    "roleConfirmButton": "Confirm change",
+    "roleDOCTOR": "Doctor",
+    "roleADMIN": "Admin",
+    "rolePATIENT": "Patient",
+    "roleUpdateError": "Error updating user role"
   },
   "admin": {
     "accessDenied": "Access Denied",

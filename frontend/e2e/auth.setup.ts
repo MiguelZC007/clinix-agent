@@ -1,14 +1,7 @@
 import { test as setup, expect } from '@playwright/test';
+import { E2E_TEST_CREDENTIALS } from './fixtures/test-credentials';
 
 const authFile = 'playwright/.auth/admin.json';
-
-// Test credentials from seed (see TEST_CREDENTIALS.md)
-// Using DOCTOR credentials since most endpoints require doctor role
-// Phone format: +591 70000002 -> country code +591 (Bolivia, default), number 70000002
-const TEST_CREDENTIALS = {
-  phoneInput: '70000002',  // Doctor user - Without country code
-  password: 'Doctor123!',
-};
 
 setup('authenticate as admin', async ({ page }) => {
   // Set longer timeout for auth setup
@@ -28,8 +21,8 @@ setup('authenticate as admin', async ({ page }) => {
   const passwordInput = page.locator('input[type="password"]').first();
   const submitBtn = page.locator('button[type="submit"]').first();
   
-  await phoneInput.fill(TEST_CREDENTIALS.phoneInput);
-  await passwordInput.fill(TEST_CREDENTIALS.password);
+  await phoneInput.fill(E2E_TEST_CREDENTIALS.doctor.phoneInput);
+  await passwordInput.fill(E2E_TEST_CREDENTIALS.doctor.password);
   
   // Click submit and wait for navigation
   // This allows NextAuth to properly set the session cookie

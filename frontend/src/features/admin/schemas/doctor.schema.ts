@@ -1,4 +1,10 @@
 import { z } from "zod";
+import type { UserRole } from "@/lib/auth/types";
+
+/** Shared optional role schema for transitional backend contract */
+export const userRoleSchema = z.enum(["PATIENT", "DOCTOR", "ADMIN"]);
+
+export type { UserRole };
 
 export const doctorSchema = z.object({
   id: z.string(),
@@ -13,6 +19,8 @@ export const doctorSchema = z.object({
   isActive: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  /** Transitional: tolerate missing role from backend */
+  role: userRoleSchema.optional(),
 });
 
 export type Doctor = z.infer<typeof doctorSchema>;
@@ -34,8 +42,10 @@ export const updateDoctorFormSchema = z.object({
   lastName: z.string().min(1, "errors.required").min(2, "errors.minLength").max(100, "errors.maxLength").optional(),
   specialtyId: z.string().min(1, "errors.required").optional(),
   licenseNumber: z.string().min(1, "errors.required").min(2, "errors.minLength").max(50, "errors.maxLength").optional(),
+  /** Transitional: role included only when backend supports it */
+  role: userRoleSchema.optional(),
 }).refine(
-  (data) => data.name || data.lastName || data.specialtyId || data.licenseNumber,
+  (data) => data.name || data.lastName || data.specialtyId || data.licenseNumber || data.role,
   { message: "errors.atLeastOneField", path: ["name"] },
 );
 

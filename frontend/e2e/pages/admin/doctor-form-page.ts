@@ -7,6 +7,7 @@ export class DoctorFormPage {
   readonly lastNameInput: Locator;
   readonly licenseNumberInput: Locator;
   readonly specialtySelect: Locator;
+  readonly roleSelect: Locator;
   readonly passwordInput: Locator;
   readonly submitBtn: Locator;
   readonly cancelBtn: Locator;
@@ -18,8 +19,8 @@ export class DoctorFormPage {
     this.nameInput = page.locator('[data-testid="input-name"], input[name="name"]').first();
     this.lastNameInput = page.locator('[data-testid="input-lastName"], input[name="lastName"]').first();
     this.licenseNumberInput = page.locator('[data-testid="input-licenseNumber"], input[name="licenseNumber"]').first();
-    // Radix Select for specialty - it's a button with role="combobox"
     this.specialtySelect = page.locator('[data-testid="select-specialty"], button[role="combobox"]').first();
+    this.roleSelect = page.locator('[data-testid="select-role"]').first();
     this.passwordInput = page.locator('[data-testid="input-password"], input[type="password"][name="password"]').first();
     this.submitBtn = page.locator('[data-testid="btn-submit"], button[type="submit"]').first();
     this.cancelBtn = page.locator('[data-testid="btn-cancel"], button:has-text("Cancelar")').first();
@@ -56,6 +57,7 @@ export class DoctorFormPage {
     licenseNumber?: string;
     specialty?: string;
     password?: string;
+    role?: string;
   }) {
     await this.nameInput.fill(data.name);
     
@@ -70,10 +72,18 @@ export class DoctorFormPage {
     if (data.specialty) {
       await this.selectRadixOption(this.specialtySelect, data.specialty);
     }
+
+    if (data.role) {
+      await this.selectRadixOption(this.roleSelect, data.role);
+    }
     
     if (data.password) {
       await this.passwordInput.fill(data.password);
     }
+  }
+
+  async selectRole(role: string) {
+    await this.selectRadixOption(this.roleSelect, role);
   }
 
   async submit() {
@@ -95,5 +105,12 @@ export class DoctorFormPage {
     await this.errorMessage.waitFor({ state: 'visible' });
     const text = await this.errorMessage.textContent();
     expect(text?.toLowerCase()).toContain(message.toLowerCase());
+  }
+
+  async getRoleSelectValue(): Promise<string | null> {
+    const trigger = this.roleSelect;
+    const value = trigger.locator('[data-testid="rs-placeholder"], [data-testid="rs-value"], [role="status"]').first();
+    const text = await value.textContent();
+    return text?.trim() || null;
   }
 }

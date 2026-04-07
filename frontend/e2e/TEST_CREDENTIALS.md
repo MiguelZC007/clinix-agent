@@ -2,6 +2,10 @@
 
 These credentials are created by the Prisma seed and should be used for E2E testing.
 
+Source of truth in code:
+
+- `frontend/e2e/fixtures/test-credentials.ts`
+
 ## Admin User (Role: ADMIN)
 
 - **Email:** admin@clinix.com

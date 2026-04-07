@@ -1,9 +1,10 @@
 "use client";
 
+import { forwardRef, useImperativeHandle } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -26,32 +27,47 @@ import { FormSection } from "@/ui/molecules/FormSection";
 import { createDoctorFormSchema, updateDoctorFormSchema } from "../schemas/doctor.schema";
 import type { CreateDoctorFormData, UpdateDoctorFormData } from "../schemas/doctor.schema";
 import type { Specialty } from "@/features/appointments/types/appointment.types";
+import type { UserRole } from "@/lib/auth/types";
+import { useRoleChangeGuard } from "../hooks/useRoleChangeGuard";
+import { RoleSelector } from "./RoleSelector";
+
+export type DoctorFormRef = {
+  resetRole: () => void;
+};
+
+type DoctorWithOptionalRole = {
+  id: string;
+  userId: string;
+  name: string;
+  lastName: string;
+  email?: string;
+  phone?: string;
+  specialtyId: string;
+  licenseNumber: string;
+  role?: UserRole;
+};
+
+type DoctorFormSubmitData = (CreateDoctorFormData | UpdateDoctorFormData) & {
+  roleChange?: { from: UserRole; to: UserRole };
+};
 
 type DoctorFormProps = {
-  doctor?: {
-    id: string;
-    name: string;
-    lastName: string;
-    email?: string;
-    phone?: string;
-    specialtyId: string;
-    licenseNumber: string;
-  };
+  doctor?: DoctorWithOptionalRole;
   specialties: Specialty[];
-  onSubmit: (data: CreateDoctorFormData | UpdateDoctorFormData) => Promise<void>;
+  onSubmit: (data: DoctorFormSubmitData) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
   mode: "create" | "edit";
 };
 
-export function DoctorForm({
+export const DoctorForm = forwardRef<DoctorFormRef, DoctorFormProps>(function DoctorForm({
   doctor,
   specialties,
   onSubmit,
   onCancel,
   isLoading,
   mode,
-}: DoctorFormProps) {
+}: DoctorFormProps, ref) {
   const t = useTranslations();
 
   const formSchema = mode === "create"
@@ -66,12 +82,47 @@ export function DoctorForm({
       specialtyId: doctor?.specialtyId ?? "",
       licenseNumber: doctor?.licenseNumber ?? "",
       password: mode === "create" ? "" : undefined,
+      role: mode === "edit" ? (doctor?.role ?? undefined) : undefined,
     },
   });
 
+  useImperativeHandle(ref, () => ({
+    resetRole: () => {
+      form.setValue("role", doctor?.role ?? undefined);
+    },
+  }));
+
+  // Track the currently selected role in the form
+  const selectedRole = useWatch({ control: form.control, name: "role" }) as UserRole | undefined;
+
+  const guard = useRoleChangeGuard({
+    doctor: doctor ?? { id: "", userId: "", name: "", lastName: "", specialtyId: "", licenseNumber: "" },
+    currentRole: selectedRole,
+  });
+
   const handleSubmit = async (data: z.infer<typeof formSchema>) => {
-    await onSubmit(data);
+    const submitData: DoctorFormSubmitData = { ...data };
+
+    // Attach roleChange metadata when role actually changed
+    if (
+      mode === "edit" &&
+      guard.isRoleSupported &&
+      guard.requiresConfirmation &&
+      doctor?.role !== undefined &&
+      selectedRole !== undefined
+    ) {
+      submitData.roleChange = { from: doctor.role, to: selectedRole };
+      // Don't include role in the base payload — let the page handle role separately
+      delete (submitData as Record<string, unknown>).role;
+    } else {
+      // Remove role from payload if unchanged or unsupported
+      delete (submitData as Record<string, unknown>).role;
+    }
+
+    await onSubmit(submitData);
   };
+
+  const isSubmitDisabled = isLoading || (mode === "edit" && guard.isSelfDemotionBlocked);
 
   return (
     <Form {...form}>
@@ -196,6 +247,38 @@ export function DoctorForm({
           </FormSection>
         )}
 
+        {mode === "edit" && (
+          <FormSection
+            title={t("doctors.role")}
+            description={t("doctors.roleHelper")}
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <RoleSelector
+                    value={field.value as UserRole | undefined}
+                    onChange={(role) => {
+                      field.onChange(role);
+                    }}
+                    disabled={guard.isSelfDemotionBlocked}
+                    isUnsupported={!guard.isRoleSupported}
+                  />
+                )}
+              />
+              {guard.isSelfDemotionBlocked && (
+                <p
+                  className="text-sm text-destructive col-span-2"
+                  data-testid="self-demotion-warning"
+                >
+                  {t("doctors.roleSelfDemotion")}
+                </p>
+              )}
+            </div>
+          </FormSection>
+        )}
+
         <div className="flex justify-end gap-4">
           <Button
             type="button"
@@ -206,7 +289,7 @@ export function DoctorForm({
           >
             {t("common.cancel")}
           </Button>
-          <Button type="submit" disabled={isLoading} data-testid="btn-submit">
+          <Button type="submit" disabled={isSubmitDisabled} data-testid="btn-submit">
             {isLoading && <LoadingSpinner size="sm" className="mr-2" />}
             {t("common.save")}
           </Button>
@@ -214,4 +297,4 @@ export function DoctorForm({
       </form>
     </Form>
   );
-}
+});

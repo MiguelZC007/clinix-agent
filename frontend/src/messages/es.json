@@ -326,8 +326,20 @@
     "notFound": "Doctor no encontrado",
     "notFoundDescription": "El doctor solicitado no existe",
     "specialtiesLoadError": "Error al cargar las especialidades",
+    "doctorNotFound": "El doctor no fue encontrado",
     "filterBySpecialty": "Filtrar por especialidad",
-    "allSpecialties": "Todas las especialidades"
+    "allSpecialties": "Todas las especialidades",
+    "role": "Rol",
+    "roleHelper": "Cambia el rol del doctor en el sistema",
+    "roleUnsupported": "La gestión de roles no está disponible aún (requiere soporte del backend)",
+    "roleSelfDemotion": "No podés cambiar tu propio rol de Administrador",
+    "roleConfirmTitle": "Confirmar cambio de rol",
+    "roleConfirmDescription": "¿Estás seguro de que querés cambiar el rol de {from} a {to}? Esta acción afecta los permisos del usuario en el sistema.",
+    "roleConfirmButton": "Confirmar cambio",
+    "roleDOCTOR": "Doctor",
+    "roleADMIN": "Admin",
+    "rolePATIENT": "Paciente",
+    "roleUpdateError": "Error al actualizar el rol del usuario"
   },
   "admin": {
     "accessDenied": "Acceso Denegado",
