@@ -72,10 +72,18 @@ export class ReplyMessageHandler {
       webhookData.From,
     );
 
+    // NOTE: MediaUrl0 and MediaContentType0 are received by the webhook but
+    // NOT processed in this MVP. Messages with only media (no text body) are
+    // treated as empty messages. See README.md "Limitaciones del MVP" for details.
     const userMessage = webhookData.Body ?? '';
     this.logger.log('=== MENSAJE RECIBIDO DE WHATSAPP ===');
     this.logger.log(`De: ${webhookData.From}`);
     this.logger.log(`Mensaje: ${userMessage || '(vacío o solo media)'}`);
+    if (webhookData.NumMedia && webhookData.NumMedia > 0) {
+      this.logger.warn(
+        `Media recibido (${webhookData.NumMedia} archivo(s)) pero no procesado: ${webhookData.MediaUrl0 ?? 'N/A'}`,
+      );
+    }
 
     const phoneNumber = webhookData.From;
     const replyFromNumber = webhookData.To;

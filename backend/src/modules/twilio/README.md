@@ -120,7 +120,7 @@ El webhook procesa cada mensaje de forma síncrona (OpenAI + envío de respuesta
 ## Funcionalidades
 
 - ✅ Envío de mensajes de texto por WhatsApp
-- ✅ Envío de mensajes con archivos multimedia
+- ❌ Envío de mensajes con archivos multimedia (pendiente)
 - ✅ Recepción de mensajes entrantes via webhook
 - ✅ Logging detallado de mensajes recibidos
 - ✅ Consulta de estado de mensajes enviados
@@ -152,6 +152,26 @@ src/modules/twilio/
 
 - **Respuesta entrante (webhook):** From del mensaje saliente = To del webhook; solo texto libre en ventana 24h.
 - **Proactivo (send-template):** Solo plantillas aprobadas; usar cuando el usuario no ha escrito en 24h.
+
+## Limitaciones del MVP
+
+### Mensajes entrantes con contenido multimedia (imágenes, archivos)
+
+El webhook de Twilio recibe `MediaUrl0` y `MediaContentType0` cuando el usuario envía imágenes o archivos. Sin embargo, **el sistema actualmente solo procesa el campo `Body`** (texto). Los mensajes que contienen solo contenido multimedia (sin texto) se procesan como mensajes vacíos.
+
+**Impacto:**
+- Imágenes médicas enviadas por pacientes no son procesadas
+- Documentos adjuntos se ignoran silenciosamente
+- El médico no recibe notificación de que se envió un archivo
+
+**Próximos pasos opcionales:**
+- Implementar reconocimiento básico de imágenes médicas (OCR/LLM)
+- Almacenar medios en blob storage y asociarlos a la conversación
+- Notificar al médico cuando se recibe un archivo
+
+### Ventana de 24h
+
+El envío de mensajes de texto libre solo funciona dentro de la ventana de 24h después del último mensaje del paciente. Fuera de esta ventana, solo se pueden enviar plantillas pre-aprobadas por WhatsApp.
 
 ## Próximos Pasos
 
