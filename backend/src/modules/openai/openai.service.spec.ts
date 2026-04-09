@@ -53,6 +53,11 @@ interface MockConversationService {
   addMessage: jest.Mock;
 }
 
+interface MockClinicHistoryService {
+  create: jest.Mock;
+  createWithoutAppointment: jest.Mock;
+}
+
 describe('OpenaiService budget preflight', () => {
   let service: OpenaiService;
   let prisma: MockPrisma;
@@ -282,5 +287,284 @@ describe('OpenaiService budget preflight', () => {
 
     expect(result).toContain('no entra de forma segura');
     expect(mockChatCompletionsCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe('OpenaiService clinic history prescription mapping', () => {
+  let service: OpenaiService;
+  let prisma: MockPrisma;
+  let clinicHistoryService: MockClinicHistoryService;
+
+  const createService = () => {
+    prisma = {
+      user: { create: jest.fn(), findFirst: jest.fn() },
+      patient: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
+      specialty: { findMany: jest.fn(), findUnique: jest.fn() },
+      appointment: {
+        create: jest.fn(),
+        findMany: jest.fn(),
+        findFirst: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
+      clinicHistory: {
+        create: jest.fn(),
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+      },
+    };
+
+    clinicHistoryService = {
+      create: jest.fn(),
+      createWithoutAppointment: jest.fn(),
+    };
+
+    return new OpenaiService(
+      prisma as never,
+      {
+        findDoctorByPhone: jest.fn(),
+        getOrCreateActiveConversation: jest.fn(),
+        preflightContextBudget: jest.fn(),
+        addMessage: jest.fn(),
+      } as never,
+      { findTodaysByDoctor: jest.fn() } as never,
+      clinicHistoryService as never,
+    );
+  };
+
+  const createBaseClinicHistoryArgs = () => ({
+    consultationReason: 'Dolor persistente desde hace varios dias',
+    symptoms: ['dolor de cabeza'],
+    treatment: 'Reposo, hidratacion y analgesicos por siete dias',
+    diagnostics: [],
+    physicalExams: [],
+    vitalSigns: [],
+  });
+
+  beforeEach(() => {
+    service = createService();
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('mapCreateClinicHistoryArgsToDto()', () => {
+    it('normaliza la receta manteniendo coerciones y descripcion opcional', async () => {
+      const dto = await service['mapCreateClinicHistoryArgsToDto']({
+        ...createBaseClinicHistoryArgs(),
+        appointmentId: '550e8400-e29b-41d4-a716-446655440003',
+        prescription: {
+          name: 123,
+          description: false,
+          medications: [
+            {
+              name: 'Ibuprofeno',
+              quantity: '2.9',
+              unit: 10,
+              frequency: 'Cada 8 horas',
+              duration: '5 dias',
+              indications: true,
+              administrationRoute: 'oral',
+              description: 456,
+            },
+            {
+              name: 'Paracetamol',
+              quantity: '1.2',
+              unit: 'tabletas',
+              frequency: 'Cada 12 horas',
+              duration: '3 dias',
+              indications: 'Despues de comer',
+              administrationRoute: 'oral',
+            },
+          ],
+        },
+      });
+
+      expect(dto.prescription).toEqual({
+        name: '123',
+        description: 'false',
+        medications: [
+          {
+            name: 'Ibuprofeno',
+            quantity: 2,
+            unit: '10',
+            frequency: 'Cada 8 horas',
+            duration: '5 dias',
+            indications: 'true',
+            administrationRoute: 'oral',
+            description: '456',
+          },
+          {
+            name: 'Paracetamol',
+            quantity: 1,
+            unit: 'tabletas',
+            frequency: 'Cada 12 horas',
+            duration: '3 dias',
+            indications: 'Despues de comer',
+            administrationRoute: 'oral',
+            description: undefined,
+          },
+        ],
+      });
+    });
+
+    it.each([
+      ['missing', undefined],
+      ['non-object', 'ibuprofeno'],
+      ['missing medications array', { name: 'Plan' }],
+    ])(
+      'omite prescription cuando el contenedor es %s',
+      async (_label, prescription) => {
+        const dto = await service['mapCreateClinicHistoryArgsToDto']({
+          ...createBaseClinicHistoryArgs(),
+          appointmentId: '550e8400-e29b-41d4-a716-446655440003',
+          prescription,
+        });
+
+        expect(dto.prescription).toBeUndefined();
+      },
+    );
+
+    it('envia al clinicHistoryService el dto normalizado en el flujo con cita', async () => {
+      prisma.appointment.findUnique.mockResolvedValue({
+        id: '550e8400-e29b-41d4-a716-446655440003',
+        doctorId: 'doctor-uuid',
+      });
+      clinicHistoryService.create.mockResolvedValue({ id: 'history-1' });
+
+      const result = await service['executeToolFunction'](
+        'doctor-uuid',
+        'create_clinic_history',
+        {
+          ...createBaseClinicHistoryArgs(),
+          appointmentId: '550e8400-e29b-41d4-a716-446655440003',
+          prescription: {
+            name: 123,
+            description: false,
+            medications: [
+              {
+                name: 'Ibuprofeno',
+                quantity: '2.9',
+                unit: 10,
+                frequency: 'Cada 8 horas',
+                duration: '5 dias',
+                indications: true,
+                administrationRoute: 'oral',
+                description: 456,
+              },
+            ],
+          },
+        },
+      );
+
+      expect(clinicHistoryService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          appointmentId: '550e8400-e29b-41d4-a716-446655440003',
+          consultationReason: 'Dolor persistente desde hace varios dias',
+          treatment: 'Reposo, hidratacion y analgesicos por siete dias',
+          symptoms: ['dolor de cabeza'],
+          prescription: {
+            name: '123',
+            description: 'false',
+            medications: [
+              {
+                name: 'Ibuprofeno',
+                quantity: 2,
+                unit: '10',
+                frequency: 'Cada 8 horas',
+                duration: '5 dias',
+                indications: 'true',
+                administrationRoute: 'oral',
+                description: '456',
+              },
+            ],
+          },
+        }),
+        'doctor-uuid',
+      );
+      expect(result).toEqual({ id: 'history-1' });
+    });
+  });
+
+  describe('mapCreateClinicHistoryArgsToDtoWithoutAppointment()', () => {
+    it('normaliza la receta sin alterar los identificadores numericos', async () => {
+      const dto = await service[
+        'mapCreateClinicHistoryArgsToDtoWithoutAppointment'
+      ](
+        {
+          ...createBaseClinicHistoryArgs(),
+          prescription: {
+            name: 'Receta 1',
+            description: 789,
+            medications: [
+              {
+                name: 999,
+                quantity: 4.8,
+                unit: 'ml',
+                frequency: false,
+                duration: 5,
+                indications: 'Despues del almuerzo',
+                administrationRoute: 'intravenosa',
+              },
+            ],
+          },
+        },
+        '550e8400-e29b-41d4-a716-446655440001',
+        '550e8400-e29b-41d4-a716-446655440002',
+        77,
+        11,
+      );
+
+      expect(dto.patientNumber).toBe(77);
+      expect(dto.specialtyCode).toBe(11);
+      expect(dto.patientId).toBeUndefined();
+      expect(dto.specialtyId).toBeUndefined();
+      expect(dto.prescription).toEqual({
+        name: 'Receta 1',
+        description: '789',
+        medications: [
+          {
+            name: '999',
+            quantity: 4,
+            unit: 'ml',
+            frequency: 'false',
+            duration: '5',
+            indications: 'Despues del almuerzo',
+            administrationRoute: 'intravenosa',
+            description: undefined,
+          },
+        ],
+      });
+    });
+
+    it.each([
+      ['missing', undefined],
+      ['non-object', 123],
+      ['missing medications array', { name: 'Plan B' }],
+    ])(
+      'omite prescription cuando el contenedor es %s y mantiene la validacion vigente',
+      async (_label, prescription) => {
+        const dto = await service[
+          'mapCreateClinicHistoryArgsToDtoWithoutAppointment'
+        ](
+          {
+            ...createBaseClinicHistoryArgs(),
+            prescription,
+          },
+          '550e8400-e29b-41d4-a716-446655440001',
+          '550e8400-e29b-41d4-a716-446655440002',
+        );
+
+        expect(dto.prescription).toBeUndefined();
+        expect(dto.patientId).toBe('550e8400-e29b-41d4-a716-446655440001');
+        expect(dto.specialtyId).toBe('550e8400-e29b-41d4-a716-446655440002');
+      },
+    );
   });
 });

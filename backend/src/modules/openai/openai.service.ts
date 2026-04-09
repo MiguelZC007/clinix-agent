@@ -30,9 +30,6 @@ interface ChatMessage {
   content: string;
 }
 
-type ChatCompletionTool = OpenAI.Chat.Completions.ChatCompletionTool;
-
-
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -48,7 +45,6 @@ export interface DoctorContext {
 @Injectable()
 export class OpenaiService {
   private readonly logger = new Logger(OpenaiService.name);
-
 
   private readonly openai: OpenAI;
 
@@ -647,6 +643,46 @@ export class OpenaiService {
     throw new BadRequestException('appointment-specialty-ambiguous');
   }
 
+  private mapPrescriptionArgs(
+    prescriptionRaw: unknown,
+  ): CreateClinicHistoryDto['prescription'] | undefined {
+    if (
+      prescriptionRaw == null ||
+      typeof prescriptionRaw !== 'object' ||
+      !Array.isArray((prescriptionRaw as Record<string, unknown>).medications)
+    ) {
+      return undefined;
+    }
+
+    const pr = prescriptionRaw as Record<string, unknown>;
+    const medications = (pr.medications as unknown[]).map((m: unknown) => {
+      const med = m as Record<string, unknown>;
+      const q = med.quantity;
+      const quantity =
+        typeof q === 'number' ? Math.floor(q) : Math.floor(Number(q));
+
+      return {
+        name: this.stringifyUnknown(med.name),
+        quantity: Number.isFinite(quantity) ? quantity : 0,
+        unit: this.stringifyUnknown(med.unit),
+        frequency: this.stringifyUnknown(med.frequency),
+        duration: this.stringifyUnknown(med.duration),
+        indications: this.stringifyUnknown(med.indications),
+        administrationRoute: this.stringifyUnknown(med.administrationRoute),
+        description:
+          med.description != null
+            ? this.stringifyUnknown(med.description)
+            : undefined,
+      };
+    });
+
+    return {
+      name: this.stringifyUnknown(pr.name),
+      description: this.stringifyUnknown(pr.description),
+      medications,
+    };
+  }
+
   private async mapCreateClinicHistoryArgsToDto(
     args: Record<string, unknown>,
   ): Promise<CreateClinicHistoryDto> {
@@ -683,54 +719,7 @@ export class OpenaiService {
           };
         })
       : [];
-    const prescriptionRaw = args.prescription;
-    let prescription:
-      | {
-          name: string;
-          description: string;
-          medications: Array<{
-            name: string;
-            quantity: number;
-            unit: string;
-            frequency: string;
-            duration: string;
-            indications: string;
-            administrationRoute: string;
-            description?: string;
-          }>;
-        }
-      | undefined;
-    if (
-      prescriptionRaw != null &&
-      typeof prescriptionRaw === 'object' &&
-      Array.isArray((prescriptionRaw as Record<string, unknown>).medications)
-    ) {
-      const pr = prescriptionRaw as Record<string, unknown>;
-      const meds = (pr.medications as unknown[]).map((m: unknown) => {
-        const med = m as Record<string, unknown>;
-        const q = med.quantity;
-        const quantity =
-          typeof q === 'number' ? Math.floor(q) : Math.floor(Number(q));
-        return {
-          name: this.stringifyUnknown(med.name),
-          quantity: Number.isFinite(quantity) ? quantity : 0,
-          unit: this.stringifyUnknown(med.unit),
-          frequency: this.stringifyUnknown(med.frequency),
-          duration: this.stringifyUnknown(med.duration),
-          indications: this.stringifyUnknown(med.indications),
-          administrationRoute: this.stringifyUnknown(med.administrationRoute),
-          description:
-            med.description != null
-              ? this.stringifyUnknown(med.description)
-              : undefined,
-        };
-      });
-      prescription = {
-        name: this.stringifyUnknown(pr.name),
-        description: this.stringifyUnknown(pr.description),
-        medications: meds,
-      };
-    }
+    const prescription = this.mapPrescriptionArgs(args.prescription);
     const symptoms = Array.isArray(args.symptoms)
       ? (args.symptoms as unknown[]).map((s: unknown) =>
           this.stringifyUnknown(s),
@@ -801,54 +790,7 @@ export class OpenaiService {
           };
         })
       : [];
-    const prescriptionRaw = args.prescription;
-    let prescription:
-      | {
-          name: string;
-          description: string;
-          medications: Array<{
-            name: string;
-            quantity: number;
-            unit: string;
-            frequency: string;
-            duration: string;
-            indications: string;
-            administrationRoute: string;
-            description?: string;
-          }>;
-        }
-      | undefined;
-    if (
-      prescriptionRaw != null &&
-      typeof prescriptionRaw === 'object' &&
-      Array.isArray((prescriptionRaw as Record<string, unknown>).medications)
-    ) {
-      const pr = prescriptionRaw as Record<string, unknown>;
-      const meds = (pr.medications as unknown[]).map((m: unknown) => {
-        const med = m as Record<string, unknown>;
-        const q = med.quantity;
-        const quantity =
-          typeof q === 'number' ? Math.floor(q) : Math.floor(Number(q));
-        return {
-          name: this.stringifyUnknown(med.name),
-          quantity: Number.isFinite(quantity) ? quantity : 0,
-          unit: this.stringifyUnknown(med.unit),
-          frequency: this.stringifyUnknown(med.frequency),
-          duration: this.stringifyUnknown(med.duration),
-          indications: this.stringifyUnknown(med.indications),
-          administrationRoute: this.stringifyUnknown(med.administrationRoute),
-          description:
-            med.description != null
-              ? this.stringifyUnknown(med.description)
-              : undefined,
-        };
-      });
-      prescription = {
-        name: this.stringifyUnknown(pr.name),
-        description: this.stringifyUnknown(pr.description),
-        medications: meds,
-      };
-    }
+    const prescription = this.mapPrescriptionArgs(args.prescription);
     const symptoms = Array.isArray(args.symptoms)
       ? (args.symptoms as unknown[]).map((s: unknown) =>
           this.stringifyUnknown(s),
