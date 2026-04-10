@@ -1,9 +1,9 @@
 import '@/lib/auth/types';
-import type { UserRole } from '@/lib/auth/types';
 import { type NextAuthOptions } from 'next-auth';
-import type { JWT as _JWT } from 'next-auth/jwt';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { login } from '@/features/auth/api/auth.api';
+import type { UserRole } from '@/lib/auth/types';
+import type { JWT as _JWT } from 'next-auth/jwt';
 
 const VALID_ROLES: UserRole[] = ['PATIENT', 'DOCTOR', 'ADMIN'];
 

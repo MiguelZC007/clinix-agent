@@ -186,14 +186,24 @@ const medicationNames = [
 
 const TEST_DOCTOR_PHONES = ['+59160365521', '+59177484885'] as const;
 
+const DEMO_PATIENT_COUNT = 100;
+
+const DEMO_APPOINTMENT_STATUSES = ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'] as const;
+
 function getRandomElement<T>(array: T[]): T {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-function generatePhone(): string {
-  const areaCode = ['424', '414', '426', '416', '412'];
-  const number = Math.floor(1000000 + Math.random() * 9000000);
-  return `+58${getRandomElement(areaCode)}${number}`;
+function generateSeedDoctorPhone(index: number): string {
+  return `+5802${String(10_000_000 + index).slice(-8)}`;
+}
+
+function generateSeedPatientEmail(index: number): string {
+  return `seed.patient${index + 1}@example.com`;
+}
+
+function generateSeedPatientPhone(index: number): string {
+  return `+5804${String(10_000_000 + index).slice(-8)}`;
 }
 
 function normalizeForEmail(s: string): string {
@@ -218,11 +228,112 @@ function generateBirthDate(): Date {
   );
 }
 
-function generateAppointmentDate(baseDate: Date, daysOffset: number): Date {
+async function ensureSeedUser({
+  email,
+  name,
+  lastName,
+  phone,
+  password,
+  role,
+}: {
+  email: string;
+  name: string;
+  lastName: string;
+  phone: string;
+  password: string;
+  role: 'ADMIN' | 'DOCTOR' | 'PATIENT';
+}) {
+  const existingUserByEmail = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (existingUserByEmail) {
+    return prisma.user.update({
+      where: { id: existingUserByEmail.id },
+      data: {
+        email,
+        name,
+        lastName,
+        phone,
+        password,
+        role,
+      },
+    });
+  }
+
+  const existingUserByPhone = await prisma.user.findUnique({
+    where: { phone },
+  });
+
+  if (existingUserByPhone) {
+    return prisma.user.update({
+      where: { id: existingUserByPhone.id },
+      data: {
+        email,
+        name,
+        lastName,
+        phone,
+        password,
+        role,
+      },
+    });
+  }
+
+  return prisma.user.create({
+    data: {
+      email,
+      name,
+      lastName,
+      phone,
+      password,
+      role,
+    },
+  });
+}
+
+async function ensureSpecialty(name: string) {
+  const existingSpecialty = await prisma.specialty.findFirst({
+    where: { name },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  if (existingSpecialty) {
+    return existingSpecialty;
+  }
+
+  return prisma.specialty.create({
+    data: { name },
+  });
+}
+
+async function ensureDoctorProfile({
+  userId,
+  specialtyId,
+  licenseNumber,
+}: {
+  userId: string;
+  specialtyId: string;
+  licenseNumber: string;
+}) {
+  return prisma.doctor.upsert({
+    where: { userId },
+    create: {
+      userId,
+      specialtyId,
+      licenseNumber,
+    },
+    update: {
+      specialtyId,
+      licenseNumber,
+    },
+  });
+}
+
+function generateAppointmentDate(baseDate: Date, daysOffset: number, slotSeed: number): Date {
   const date = new Date(baseDate);
   date.setDate(date.getDate() + daysOffset);
-  const hour = 8 + Math.floor(Math.random() * 10);
-  const minute = Math.random() < 0.5 ? 0 : 30;
+  const hour = 8 + (slotSeed % 10);
+  const minute = slotSeed % 2 === 0 ? 0 : 30;
   date.setHours(hour, minute, 0, 0);
   return date;
 }
@@ -283,68 +394,43 @@ async function main() {
   const doctorPasswordHash = await bcrypt.hash(TEST_CREDENTIALS.doctor.password, 10);
   const patientPasswordHash = await bcrypt.hash(TEST_CREDENTIALS.patient.password, 10);
 
-  console.log('📋 Creando especialidades...');
+  console.log('📋 Asegurando especialidades base...');
   const createdSpecialties = await Promise.all(
-    specialties.map((name) =>
-      prisma.specialty.create({
-        data: { name },
-      }),
-    ),
+    specialties.map((name) => ensureSpecialty(name)),
   );
-  console.log(`✅ ${createdSpecialties.length} especialidades creadas`);
+  console.log(`✅ ${createdSpecialties.length} especialidades listas`);
 
   // ===========================================
   // E2E TEST USER (for Playwright tests)
   // ===========================================
   console.log('🔐 Creando usuario de prueba E2E...');
-  const e2eUser = await prisma.user.upsert({
-    where: { email: TEST_CREDENTIALS.e2e.email },
-    create: {
-      email: TEST_CREDENTIALS.e2e.email,
-      name: 'E2E',
-      lastName: 'Test Doctor',
-      phone: TEST_CREDENTIALS.e2e.phone,
-      password: testPasswordHash,
-      role: TEST_CREDENTIALS.e2e.role,
-    },
-    update: {
-      phone: TEST_CREDENTIALS.e2e.phone,
-      password: testPasswordHash,
-    },
+  const e2eUser = await ensureSeedUser({
+    email: TEST_CREDENTIALS.e2e.email,
+    name: 'E2E',
+    lastName: 'Test Doctor',
+    phone: TEST_CREDENTIALS.e2e.phone,
+    password: testPasswordHash,
+    role: TEST_CREDENTIALS.e2e.role,
   });
 
-  const existingE2EDoctor = await prisma.doctor.findFirst({
-    where: { userId: e2eUser.id },
+  const e2eDoctorProfile = await ensureDoctorProfile({
+    userId: e2eUser.id,
+    specialtyId: createdSpecialties[0].id,
+    licenseNumber: 'LIC-E2E-TEST',
   });
-  if (!existingE2EDoctor) {
-    await prisma.doctor.create({
-      data: {
-        userId: e2eUser.id,
-        specialtyId: createdSpecialties[0].id,
-        licenseNumber: 'LIC-E2E-TEST',
-      },
-    });
-  }
   console.log(`✅ Usuario E2E creado: ${TEST_CREDENTIALS.e2e.email}`);
 
   // ===========================================
   // ADMIN TEST USER (for admin tests)
   // ===========================================
   console.log('🔐 Creando usuario administrador de prueba...');
-  const adminUser = await prisma.user.upsert({
-    where: { email: TEST_CREDENTIALS.admin.email },
-    create: {
-      email: TEST_CREDENTIALS.admin.email,
-      name: 'Admin',
-      lastName: 'Test',
-      phone: TEST_CREDENTIALS.admin.phone,
-      password: adminPasswordHash,
-      role: TEST_CREDENTIALS.admin.role,
-    },
-    update: {
-      phone: TEST_CREDENTIALS.admin.phone,
-      password: adminPasswordHash,
-    },
+  const adminUser = await ensureSeedUser({
+    email: TEST_CREDENTIALS.admin.email,
+    name: 'Admin',
+    lastName: 'Test',
+    phone: TEST_CREDENTIALS.admin.phone,
+    password: adminPasswordHash,
+    role: TEST_CREDENTIALS.admin.role,
   });
   console.log(`✅ Usuario administrador creado: ${TEST_CREDENTIALS.admin.email}`);
 
@@ -352,88 +438,33 @@ async function main() {
   // DOCTOR TEST USER (for doctor tests)
   // ===========================================
   console.log('👨‍⚕️ Creando usuario doctor de prueba...');
-  const doctorTestUser = await prisma.user.upsert({
-    where: { email: TEST_CREDENTIALS.doctor.email },
-    create: {
-      email: TEST_CREDENTIALS.doctor.email,
-      name: 'Doctor',
-      lastName: 'Test',
-      phone: TEST_CREDENTIALS.doctor.phone,
-      password: doctorPasswordHash,
-      role: TEST_CREDENTIALS.doctor.role,
-    },
-    update: {
-      phone: TEST_CREDENTIALS.doctor.phone,
-      password: doctorPasswordHash,
-    },
+  const doctorTestUser = await ensureSeedUser({
+    email: TEST_CREDENTIALS.doctor.email,
+    name: 'Doctor',
+    lastName: 'Test',
+    phone: TEST_CREDENTIALS.doctor.phone,
+    password: doctorPasswordHash,
+    role: TEST_CREDENTIALS.doctor.role,
   });
 
-  const existingDoctorTestDoctor = await prisma.doctor.findFirst({
-    where: { userId: doctorTestUser.id },
+  const doctorTestDoctor = await ensureDoctorProfile({
+    userId: doctorTestUser.id,
+    specialtyId: createdSpecialties[1].id,
+    licenseNumber: 'LIC-DOCTOR-TEST',
   });
-  if (!existingDoctorTestDoctor) {
-    await prisma.doctor.create({
-      data: {
-        userId: doctorTestUser.id,
-        specialtyId: createdSpecialties[1].id,
-        licenseNumber: 'LIC-DOCTOR-TEST',
-      },
-    });
-  }
   console.log(`✅ Usuario doctor creado: ${TEST_CREDENTIALS.doctor.email}`);
-
-  // ===========================================
-  // E2E TEST USER (for e2e tests)
-  // ===========================================
-  console.log('🧪 Creando usuario E2E de prueba...');
-  const e2eTestUser = await prisma.user.upsert({
-    where: { email: TEST_CREDENTIALS.e2e.email },
-    create: {
-      email: TEST_CREDENTIALS.e2e.email,
-      name: 'E2E',
-      lastName: 'Test',
-      phone: TEST_CREDENTIALS.e2e.phone,
-      password: doctorPasswordHash,
-      role: TEST_CREDENTIALS.e2e.role,
-    },
-    update: {
-      phone: TEST_CREDENTIALS.e2e.phone,
-      password: doctorPasswordHash,
-    },
-  });
-
-  let e2eTestDoctor = await prisma.doctor.findFirst({
-    where: { userId: e2eTestUser.id },
-  });
-  if (!e2eTestDoctor) {
-    e2eTestDoctor = await prisma.doctor.create({
-      data: {
-        userId: e2eTestUser.id,
-        specialtyId: createdSpecialties[2].id,
-        licenseNumber: 'LIC-E2E-TEST',
-      },
-    });
-  }
-  console.log(`✅ Usuario E2E creado: ${TEST_CREDENTIALS.e2e.email}`);
 
   // ===========================================
   // PATIENT TEST USER (for patient tests)
   // ===========================================
   console.log('👤 Creando usuario paciente de prueba...');
-  const patientTestUser = await prisma.user.upsert({
-    where: { email: TEST_CREDENTIALS.patient.email },
-    create: {
-      email: TEST_CREDENTIALS.patient.email,
-      name: 'Patient',
-      lastName: 'Test',
-      phone: TEST_CREDENTIALS.patient.phone,
-      password: patientPasswordHash,
-      role: TEST_CREDENTIALS.patient.role,
-    },
-    update: {
-      phone: TEST_CREDENTIALS.patient.phone,
-      password: patientPasswordHash,
-    },
+  const patientTestUser = await ensureSeedUser({
+    email: TEST_CREDENTIALS.patient.email,
+    name: 'Patient',
+    lastName: 'Test',
+    phone: TEST_CREDENTIALS.patient.phone,
+    password: patientPasswordHash,
+    role: TEST_CREDENTIALS.patient.role,
   });
   console.log(`✅ Usuario paciente creado: ${TEST_CREDENTIALS.patient.email}`);
 
@@ -471,47 +502,37 @@ async function main() {
   }> = [];
   
   // Add test doctors first so they also get patients assigned
-  const doctorTestDoctor = await prisma.doctor.findFirst({
-    where: { user: { email: TEST_CREDENTIALS.doctor.email } },
-  });
-  if (doctorTestDoctor) {
-    doctors.push(doctorTestDoctor);
-  }
-  
-  if (e2eTestDoctor) {
-    doctors.push(e2eTestDoctor);
-  }
+  doctors.push(doctorTestDoctor);
+  doctors.push(e2eDoctorProfile);
   
   for (let i = 0; i < 10; i++) {
     const firstName = doctorFirstNames[i];
     const lastName = doctorLastNames[i];
     const email = generateEmail(firstName, lastName, i);
-    const phone = i < TEST_DOCTOR_PHONES.length ? TEST_DOCTOR_PHONES[i] : generatePhone();
+    const phone = i < TEST_DOCTOR_PHONES.length
+      ? TEST_DOCTOR_PHONES[i]
+      : generateSeedDoctorPhone(i);
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        name: firstName,
-        lastName,
-        phone,
-        password: hashedPassword,
-        role: 'DOCTOR',
-      },
+    const user = await ensureSeedUser({
+      email,
+      name: firstName,
+      lastName,
+      phone,
+      password: hashedPassword,
+      role: 'DOCTOR',
     });
 
-    const doctor = await prisma.doctor.create({
-      data: {
-        userId: user.id,
-        specialtyId: createdSpecialties[i].id,
-        licenseNumber: `LIC-${String(i + 1).padStart(6, '0')}`,
-      },
+    const doctor = await ensureDoctorProfile({
+      userId: user.id,
+      specialtyId: createdSpecialties[i].id,
+      licenseNumber: `LIC-${String(i + 1).padStart(6, '0')}`,
     });
 
     doctors.push(doctor);
   }
   console.log(`✅ ${doctors.length} doctores creados`);
 
-  console.log('👥 Creando pacientes con antecedentes clínicos...');
+  console.log('👥 Asegurando pacientes demo con antecedentes clínicos...');
   const patients: Array<{
     id: string;
     userId: string;
@@ -524,28 +545,27 @@ async function main() {
     createdAt: Date;
     updatedAt: Date;
   }> = [];
-  for (let i = 0; i < 100; i++) {
-    const firstName = getRandomElement(firstNames);
-    const lastName = getRandomElement(lastNames);
-    const email = generateEmail(firstName, lastName, i);
-    const phone = generatePhone();
+  for (let i = 0; i < DEMO_PATIENT_COUNT; i++) {
+    const firstName = firstNames[i % firstNames.length];
+    const lastName = lastNames[(i * 3) % lastNames.length];
+    const email = generateSeedPatientEmail(i);
+    const phone = generateSeedPatientPhone(i);
     const gender = Math.random() < 0.5 ? 'male' : 'female';
     const birthDate = generateBirthDate();
     const antecedents = generateAntecedents();
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        name: firstName,
-        lastName,
-        phone,
-        password: hashedPassword,
-        role: 'PATIENT',
-      },
+    const user = await ensureSeedUser({
+      email,
+      name: firstName,
+      lastName,
+      phone,
+      password: hashedPassword,
+      role: 'PATIENT',
     });
 
-    const patient = await prisma.patient.create({
-      data: {
+    const patient = await prisma.patient.upsert({
+      where: { userId: user.id },
+      create: {
         userId: user.id,
         registeredByDoctorId: doctors[i % doctors.length].id,
         gender,
@@ -555,15 +575,17 @@ async function main() {
         medicalHistory: antecedents.medicalHistory,
         familyHistory: antecedents.familyHistory,
       },
+      update: {
+        registeredByDoctorId: doctors[i % doctors.length].id,
+      },
     });
 
     patients.push(patient);
   }
   console.log(`✅ ${patients.length} pacientes creados con antecedentes clínicos`);
 
-  console.log('📅 Creando citas (100 pacientes × 10 doctores = 1000 citas)...');
-  const baseDate = new Date();
-  const statuses = ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'];
+  console.log('📅 Creando citas demo si no existen todavía...');
+  const baseDate = new Date('2026-01-01T00:00:00.000Z');
   let appointmentCount = 0;
   const appointments: Array<{
     id: string;
@@ -577,36 +599,47 @@ async function main() {
     updatedAt: Date;
   }> = [];
 
-  for (const patient of patients) {
-    for (const doctor of doctors) {
-      const daysOffset = Math.floor(Math.random() * 365);
-      const startAppointment = generateAppointmentDate(baseDate, daysOffset);
+  for (const [patientIndex, patient] of patients.entries()) {
+    for (const [doctorIndex, doctor] of doctors.entries()) {
+      const slotSeed = patientIndex * doctors.length + doctorIndex;
+      const daysOffset = slotSeed % 365;
+      const startAppointment = generateAppointmentDate(baseDate, daysOffset, slotSeed);
       const endAppointment = new Date(startAppointment);
       endAppointment.setHours(endAppointment.getHours() + 1);
 
-      const status = getRandomElement(statuses);
-
-      const appointment = await prisma.appointment.create({
-        data: {
+      const existingAppointment = await prisma.appointment.findFirst({
+        where: {
           patientId: patient.id,
           doctorId: doctor.id,
-          specialtyId: doctor.specialtyId,
           startAppointment,
-          endAppointment,
-          status,
         },
       });
 
+      const status = getRandomElement([...DEMO_APPOINTMENT_STATUSES]);
+
+      const appointment =
+        existingAppointment ??
+        (await prisma.appointment.create({
+          data: {
+            patientId: patient.id,
+            doctorId: doctor.id,
+            specialtyId: doctor.specialtyId,
+            startAppointment,
+            endAppointment,
+            status,
+          },
+        }));
+
       appointments.push(appointment);
       appointmentCount++;
-      if (appointmentCount % 100 === 0) {
-        console.log(`  ⏳ ${appointmentCount}/1000 citas creadas...`);
+      if (!existingAppointment && appointmentCount % 100 === 0) {
+        console.log(`  ⏳ ${appointmentCount}/${DEMO_PATIENT_COUNT * doctors.length} citas procesadas...`);
       }
     }
   }
-  console.log(`✅ ${appointmentCount} citas creadas`);
+  console.log(`✅ ${appointmentCount} citas listas`);
 
-  console.log('📋 Creando historias clínicas (1000 historias)...');
+  console.log('📋 Creando historias clínicas demo si no existen todavía...');
   let clinicHistoryCount = 0;
 
   for (const appointment of appointments) {
@@ -614,6 +647,15 @@ async function main() {
     const doctor = doctors.find(d => d.id === appointment.doctorId);
 
     if (!patient || !doctor) continue;
+
+    const existingClinicHistory = await prisma.clinicHistory.findUnique({
+      where: { appointmentId: appointment.id },
+    });
+
+    if (existingClinicHistory) {
+      clinicHistoryCount++;
+      continue;
+    }
 
     const consultationReason = getRandomElement(consultationReasons);
     const selectedSymptoms = getRandomElements(symptoms, 1, 4);
@@ -652,7 +694,7 @@ async function main() {
     const hasPrescription = Math.random() > 0.3;
     const medicationCount = hasPrescription ? Math.floor(Math.random() * 2) + 1 : 0;
 
-    const clinicHistory = await prisma.clinicHistory.create({
+    await prisma.clinicHistory.create({
       data: {
         patientId: patient.id,
         doctorId: doctor.id,
@@ -706,10 +748,10 @@ async function main() {
 
     clinicHistoryCount++;
     if (clinicHistoryCount % 100 === 0) {
-      console.log(`  ⏳ ${clinicHistoryCount}/1000 historias clínicas creadas...`);
+      console.log(`  ⏳ ${clinicHistoryCount}/${appointments.length} historias clínicas procesadas...`);
     }
   }
-  console.log(`✅ ${clinicHistoryCount} historias clínicas creadas`);
+  console.log(`✅ ${clinicHistoryCount} historias clínicas listas`);
 
   console.log('✨ Seed completado exitosamente!');
   console.log(`📊 Resumen:`);

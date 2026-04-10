@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import type { ComponentPropsWithoutRef } from 'react';
 
 type CountryCode = {
   code: string;
@@ -52,6 +53,7 @@ type PhoneInputWithCountryProps = {
   className?: string;
   disabled?: boolean;
   defaultCountry?: string;
+  'data-testid'?: ComponentPropsWithoutRef<'input'>['data-testid'];
 };
 
 export function PhoneInputWithCountry({
@@ -62,6 +64,7 @@ export function PhoneInputWithCountry({
   className,
   disabled = false,
   defaultCountry = "BO",
+  'data-testid': dataTestId,
 }: PhoneInputWithCountryProps) {
   const getInitialCountry = () => {
     if (value) {
@@ -154,6 +157,7 @@ export function PhoneInputWithCountry({
         </SelectContent>
       </Select>
       <Input
+        data-testid={dataTestId}
         type="tel"
         value={phoneNumber}
         onChange={handlePhoneChange}

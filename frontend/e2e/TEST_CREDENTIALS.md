@@ -48,17 +48,18 @@ Use this account for testing patient features like:
 - **Password:** Test123!
 - **Role:** DOCTOR
 
-This is the primary account for E2E authentication setup.
+This extra seeded doctor account is available for isolated/manual E2E scenarios, but it is not the default Playwright auth setup account.
 
 ## Usage in Playwright
 
 ```typescript
-// e2e/auth.setup.ts
-const TEST_PHONE = '+59170000000';
-const TEST_PASSWORD = 'Test123!';
+// e2e/auth-doctor.setup.ts
+await phoneInput.fill(E2E_TEST_CREDENTIALS.doctor.phoneInput);
+await passwordInput.fill(E2E_TEST_CREDENTIALS.doctor.password);
 
-await phoneInput.fill(TEST_PHONE);
-await passwordInput.fill(TEST_PASSWORD);
+// e2e/auth-admin.setup.ts
+await phoneInput.fill(E2E_TEST_CREDENTIALS.admin.phoneInput);
+await passwordInput.fill(E2E_TEST_CREDENTIALS.admin.password);
 ```
 
 ## Reset Database

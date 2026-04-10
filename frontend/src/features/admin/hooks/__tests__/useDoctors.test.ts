@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import * as doctorsApi from '../../api/doctors.api';
 import * as auditLogsApi from '../../api/audit-logs.api';
+import * as doctorsApi from '../../api/doctors.api';
 import {
   useDoctorList,
   useDoctor,

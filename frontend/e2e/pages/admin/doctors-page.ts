@@ -1,4 +1,5 @@
-import { Page, Locator, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 export class DoctorsPage {
   readonly page: Page;
@@ -7,7 +8,6 @@ export class DoctorsPage {
   readonly searchInput: Locator;
   readonly statusFilter: Locator;
   readonly specialtyFilter: Locator;
-  readonly clearFiltersBtn: Locator;
   readonly pagination: Locator;
   readonly rows: Locator;
 

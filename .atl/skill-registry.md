@@ -47,8 +47,12 @@
 - Backend schema changes belong in `backend/` only.
 
 ### ticket-workflow
-- Ticket work follows Trello → branch → SDD → tests → judge → commit → PR.
-- Load `ticket-router`, `pre-commit-gate`, and `test-mandate` when the workflow reaches those steps.
+- Ticket work follows Trello → worktree → SDD → tests → judge → commit → PR → verify → cleanup.
+- Create the dedicated worktree BEFORE analysis, edits, tests, or commits.
+- Load `ticket-router`, `worktree-first`, `worktree-runtime-gate`, `pre-commit-gate`, `commit-language`, and `test-mandate` when the workflow reaches those steps.
+- Every worktree must share the same DB but use its own free backend/frontend ports.
+- If runtime or required tests cannot run from the worktree, commit and PR are blocked.
+- Conventional commits for this project must be written in Spanish.
 - Use RED → GREEN → REFACTOR per task; every changed behavior needs tests first.
 - Save each SDD phase to Engram using stable `sdd/{ticket-id}/...` topic keys.
 - Run repo-specific tests before commit and PR.
@@ -88,6 +92,9 @@
 | AGENTS.md | `AGENTS.md` | Index — root project conventions and SDD preferences |
 | test-mandate | `.opencode/rules/test-mandate.md` | Referenced by `AGENTS.md`; strict TDD enforcement |
 | pre-commit-gate | `.opencode/rules/pre-commit-gate.md` | Referenced by `AGENTS.md`; mandatory pre-commit gate |
+| worktree-first | `.opencode/rules/worktree-first.md` | Referenced by `AGENTS.md`; requires dedicated worktree before ticket work |
+| commit-language | `.opencode/rules/commit-language.md` | Referenced by `AGENTS.md`; conventional commits in Spanish |
+| worktree-runtime-gate | `.opencode/rules/worktree-runtime-gate.md` | Referenced by `AGENTS.md`; runtime/env/ports gate per worktree |
 | ticket-router | `.opencode/rules/ticket-router.md` | Referenced by `AGENTS.md`; repo routing for ticket work |
 | backend-testing rule | `.opencode/rules/backend-testing.md` | Referenced by `AGENTS.md`; backend testing conventions |
 | frontend-e2e rule | `.opencode/rules/frontend-e2e.md` | Referenced by `AGENTS.md`; frontend E2E conventions |

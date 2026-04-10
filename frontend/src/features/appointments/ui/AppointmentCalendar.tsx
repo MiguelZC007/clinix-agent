@@ -95,11 +95,6 @@ export function AppointmentCalendar({ appointments, onAppointmentClick, onDateRa
     });
   }, [view]);
 
-  const handleDayClick = useCallback((date: Date) => {
-    setCurrentDate(date);
-    setView('day');
-  }, []);
-
 return (
     <div className="flex flex-col h-full" data-testid="appointment-calendar">
       <CalendarHeader

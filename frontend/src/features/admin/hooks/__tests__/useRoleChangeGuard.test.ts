@@ -1,12 +1,11 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { useAuth } from '@/lib/auth/hooks';
 import { useRoleChangeGuard } from '../useRoleChangeGuard';
 
 vi.mock('@/lib/auth/hooks', () => ({
   useAuth: vi.fn(),
 }));
-
-import { useAuth } from '@/lib/auth/hooks';
 
 const ADMIN_USER = {
   id: 'admin-user-id',

@@ -2,8 +2,8 @@
 
 import { MoreHorizontal, Eye, Pencil, PowerOff, Power } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -1,7 +1,6 @@
 "use client";
 
 import { forwardRef, useImperativeHandle } from "react";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { useForm, useWatch } from "react-hook-form";
@@ -22,14 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LoadingSpinner } from "@/ui/atoms/LoadingSpinner";
-import { FormSection } from "@/ui/molecules/FormSection";
-import { createDoctorFormSchema, updateDoctorFormSchema } from "../schemas/doctor.schema";
-import type { CreateDoctorFormData, UpdateDoctorFormData } from "../schemas/doctor.schema";
 import type { Specialty } from "@/features/appointments/types/appointment.types";
 import type { UserRole } from "@/lib/auth/types";
-import { useRoleChangeGuard } from "../hooks/useRoleChangeGuard";
+import { LoadingSpinner } from "@/ui/atoms/LoadingSpinner";
+import { FormSection } from "@/ui/molecules/FormSection";
 import { RoleSelector } from "./RoleSelector";
+import { useRoleChangeGuard } from "../hooks/useRoleChangeGuard";
+import { createDoctorFormSchema, updateDoctorFormSchema } from "../schemas/doctor.schema";
+import type { CreateDoctorFormData, UpdateDoctorFormData } from "../schemas/doctor.schema";
 
 export type DoctorFormRef = {
   resetRole: () => void;
@@ -74,7 +73,7 @@ export const DoctorForm = forwardRef<DoctorFormRef, DoctorFormProps>(function Do
     ? createDoctorFormSchema
     : updateDoctorFormSchema;
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<CreateDoctorFormData | UpdateDoctorFormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: doctor?.name ?? "",
@@ -100,7 +99,7 @@ export const DoctorForm = forwardRef<DoctorFormRef, DoctorFormProps>(function Do
     currentRole: selectedRole,
   });
 
-  const handleSubmit = async (data: z.infer<typeof formSchema>) => {
+  const handleSubmit = async (data: CreateDoctorFormData | UpdateDoctorFormData) => {
     const submitData: DoctorFormSubmitData = { ...data };
 
     // Attach roleChange metadata when role actually changed

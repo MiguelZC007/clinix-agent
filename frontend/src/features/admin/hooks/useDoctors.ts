@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { toError } from "@/lib/utils";
 import type { PaginatedData } from "@/types/contracts/api-response";
+import { getAuditLogs, type AuditLog, type AuditLogsParams } from "../api/audit-logs.api";
 import {
   getDoctors,
   getDoctorById,
@@ -11,7 +12,6 @@ import {
   deactivateDoctor,
   activateDoctor,
 } from "../api/doctors.api";
-import { getAuditLogs, type AuditLog, type AuditLogsParams } from "../api/audit-logs.api";
 import type {
   Doctor,
   CreateDoctorRequest,

@@ -1,12 +1,12 @@
 ---
 name: ticket-workflow
 description: >
-  Automated ticket workflow: select from Trello, branch, SDD, test, judge, commit, PR.
+  Automated ticket workflow: select from Trello, create a git worktree, run SDD, test, judge, commit, PR, verify completion, then clean up.
   Trigger: When working on any Trello ticket, feature branch, or task from the product backlog.
 license: Apache-2.0
 metadata:
   author: clinix-agent
-  version: "1.0"
+  version: "1.2"
 ---
 
 ## When to Use
@@ -21,13 +21,16 @@ metadata:
 | Rule | File | When |
 |------|------|------|
 | ticket-router | `.opencode/rules/ticket-router.md` | Before creating branches — determines which repo(s) |
+| worktree-first | `.opencode/rules/worktree-first.md` | Before ANY ticket work — blocks work outside a dedicated worktree |
+| worktree-runtime-gate | `.opencode/rules/worktree-runtime-gate.md` | Before tests, commit, and PR — ensures env/ports/runtime are ready |
 | pre-commit-gate | `.opencode/rules/pre-commit-gate.md` | Before every commit — mandatory test/build gate |
+| commit-language | `.opencode/rules/commit-language.md` | Before every commit — conventional commits in Spanish only |
 | test-mandate | `.opencode/rules/test-mandate.md` | When writing code — every function needs tests |
 
 ## Overview
 
 ```
-Trello (Backlog) → In Progress → Branch → SDD → Tests → Judge → Commit → PR
+Trello (Backlog) → In Progress → Worktree → SDD → Tests → Judge → Commit → PR → Verify → Cleanup
 ```
 
 This skill defines the **mandatory pipeline** that every ticket must follow. No shortcuts.
@@ -39,41 +42,65 @@ This skill defines the **mandatory pipeline** that every ticket must follow. No 
 ### 1.1 Select Ticket from Trello
 
 ```
-1. Get board lists: trello_get-boards → trello_get-lists
-2. Read tickets from "Backlog" list: trello_get-tickets-by-list
-3. Present tickets to user OR select by priority:
+1. Source `.env.trello`
+2. Read board lists via Trello REST API
+3. Read tickets from the "Backlog" list via Trello REST API
+4. Present tickets to user OR select by priority:
    - 🔴 Crítico first
    - 🟠 Arquitectónico second
    - 🔵 Feature nueva third
    - 🟡 Menor last
-4. User confirms which ticket to work on
+5. User confirms which ticket to work on
 ```
 
 ### 1.2 Move to In Progress
 
 ```
 1. Get the In Progress list ID
-2. Move card: trello_move-card(cardId, inProgressListId)
+2. Move card with Trello REST API
 3. Add comment to card: "🚀 Started — Branch: feature/{TICKET-ID}"
 ```
 
-### 1.3 Update Develop & Create Branch
+### 1.3 Create Worktree BEFORE Any Real Work
 
 ```bash
-# For BOTH repos (backend AND frontend)
+# For EACH affected product repo (backend and/or frontend)
 
-# 1. Switch to develop
+# 1. Ensure develop is current in the main repo checkout
 git checkout develop
-
-# 2. Pull latest changes
 git pull origin develop
 
-# 3. Create feature branch
-git checkout -b feature/{TICKET-ID}-{short-description}
+# 2. Create branch name
+BRANCH_NAME="feature/{TICKET-ID}-{short-description}"
+
+# 3. Create dedicated worktree folder OUTSIDE the product repo
+WORKTREE_PATH="../worktrees/{repo-name}/${BRANCH_NAME}"
+mkdir -p "../worktrees/{repo-name}"
+
+# 4. Create the worktree from develop with the new branch
+git worktree add -b "$BRANCH_NAME" "$WORKTREE_PATH" develop
+
+# 5. Allocate runtime for this worktree
+./scripts/setup-worktree-runtime.sh "$WORKTREE_PATH"
+
+# 6. Perform ALL implementation work from the worktree
+git -C "$WORKTREE_PATH" status
 
 # Example: feature/ADMIN-2-auditoria-cambios
 # Example: feature/FE-6-admin-ui
 ```
+
+**Critical worktree rule:**
+- Worktree creation is the FIRST mandatory step after ticket selection. Do not analyze, edit, test, or commit ticket code before the worktree exists.
+- Once the worktree is created, all code changes, tests, commits, pushes, and PR commands MUST run from the worktree path.
+- Do NOT implement the ticket in the main checkout.
+- Keep one worktree per active ticket branch.
+
+**Runtime rule per worktree:**
+- Every worktree must reuse the SAME shared database connection.
+- Every worktree must get its OWN free backend/frontend ports.
+- The runtime setup must search free ports so worktrees never collide.
+- If env variables or ports are missing, STOP and fix runtime before testing.
 
 **Branch naming convention:**
 | Prefix | Meaning | Example |
@@ -174,14 +201,21 @@ describe('AdminService', () => {
 
 **MANDATORY: Run ALL project tests to verify nothing is broken.**
 
+Before any test command, validate runtime in the worktree:
+
+```bash
+./scripts/setup-worktree-runtime.sh "$WORKTREE_PATH"
+./scripts/verify-worktree-runtime.sh "$WORKTREE_PATH"
+```
+
 ```bash
 # Backend — ALL tests
-cd backend
+cd "$WORKTREE_PATH"
 pnpm test                    # unit tests
 pnpm test:e2e               # e2e tests (if applicable)
 
 # Frontend — ALL tests
-cd frontend
+cd "$WORKTREE_PATH"
 pnpm test                    # unit tests
 pnpm test:integration        # integration tests (if applicable)
 ```
@@ -192,19 +226,31 @@ pnpm test:integration        # integration tests (if applicable)
 3. Fix BEFORE proceeding
 4. Re-run ALL tests to confirm
 
-### 3.3 Build Verification
+**If runtime is not ready:**
+1. STOP
+2. Fix env variables, generated clients, services, and free ports inside the worktree
+3. Re-run runtime verification
+4. Only then run tests again
+
+### 3.3 Verification Gate
 
 ```bash
 # Backend
-cd backend
-npx prisma generate          # schema compiles
-pnpm build                   # TypeScript compiles
+cd "$WORKTREE_PATH"
+pnpm test
+pnpm test:e2e               # if applicable
+npx prisma generate         # if Prisma/schema changed
 
 # Frontend
-cd frontend
-pnpm lint                    # no lint errors
-pnpm build                   # Next.js compiles
+cd "$WORKTREE_PATH"
+pnpm test
+pnpm test:integration       # if applicable
+pnpm lint
 ```
+
+**Important:** use the verification commands required by the repo and ticket, but do NOT delete the worktree until all mandatory checks are green.
+
+**Hard gate:** if you cannot run the required tests successfully from the worktree with the correct runtime, you MUST NOT create a commit and MUST NOT create a PR.
 
 ---
 
@@ -245,7 +291,7 @@ Round 3: Clean → APPROVED ✅
 
 ---
 
-## Phase 5: Commit & Push
+## Phase 5: Commit, Push & Review Handoff
 
 ### 5.0 GGA Review Gate (MANDATORY BEFORE COMMIT)
 
@@ -273,6 +319,10 @@ gga --pr-mode
 [optional footer]
 ```
 
+**Language rule:**
+- Commit messages MUST be written in Spanish.
+- English commit descriptions are invalid for this project.
+
 **Types:**
 | Type | When to use |
 |------|-------------|
@@ -287,15 +337,18 @@ gga --pr-mode
 
 **Examples:**
 ```bash
-git commit -m "feat(ADMIN-2): add audit logging interceptor and UI"
-git commit -m "fix(T-3): verify 24h window before sending WhatsApp"
-git commit -m "refactor(T-5): extract ToolExecutorService from OpenaiService"
-git commit -m "test(ADMIN-1): add unit tests for admin service CRUD"
+cd "$WORKTREE_PATH"
+git add .
+git commit -m "feat(ADMIN-2): agrega interceptor y vista de auditoría"
+git commit -m "fix(T-3): valida ventana de 24 horas para WhatsApp"
+git commit -m "refactor(T-5): extrae ToolExecutorService de OpenaiService"
+git commit -m "test(ADMIN-1): agrega pruebas unitarias del servicio admin"
 ```
 
-### 5.2 Push Branch
+### 5.2 Push Branch from the Worktree
 
 ```bash
+cd "$WORKTREE_PATH"
 git push -u origin feature/{TICKET-ID}-{description}
 ```
 
@@ -313,6 +366,7 @@ git push -u origin feature/{TICKET-ID}-{description}
 ### Using GitHub CLI
 
 ```bash
+cd "$WORKTREE_PATH"
 gh pr create \
   --base develop \
   --head feature/{TICKET-ID}-{description} \
@@ -329,11 +383,43 @@ gh pr create \
 ## Testing
 - ✅ Unit tests: {count} passing
 - ✅ Global tests: all passing
-- ✅ Build: clean
 - ✅ Judgment Day: APPROVED (Round {N})
 EOF
 )"
 ```
+
+### 6.1 Confirm Ticket Completion Before Cleanup
+
+Do NOT remove the worktree yet. First verify ALL of the following:
+
+1. The implementation for the ticket scope is complete
+2. Mandatory tests/checks are green
+3. Worktree runtime was prepared correctly with shared DB and dedicated free ports
+3. Judgment Day (or equivalent review gate) passed
+4. Commit exists on the ticket branch
+5. Branch was pushed successfully
+6. PR was created successfully and the PR URL was captured
+7. Trello card was updated with status/comment/PR link as appropriate
+
+Only after this confirmation is the ticket considered correctly completed for handoff.
+
+## Phase 7: Worktree Cleanup (ONLY AFTER SUCCESSFUL HANDOFF)
+
+### 7.1 Remove Worktree Safely
+
+```bash
+# Run from the main checkout, not inside the worktree
+git worktree remove "../worktrees/{repo-name}/feature/{TICKET-ID}-{description}"
+git worktree prune
+```
+
+### 7.2 Cleanup Rules
+
+- NEVER remove the worktree before the branch is pushed and the PR exists
+- NEVER remove the worktree if tests/review are still failing
+- NEVER commit or open a PR if runtime verification failed in the worktree
+- If the user asks to continue iterating on the same ticket, keep the worktree
+- If both repos are involved, verify and clean up each repo worktree independently
 
 ### Move Trello Card to Done (after PR merge)
 
@@ -439,35 +525,36 @@ If tokens run out mid-workflow:
 ## Commands Quick Reference
 
 ```bash
-# Trello
-trello_get-boards                           # List boards
-trello_get-lists(boardId)                   # List columns
-trello_get-tickets-by-list(listId)          # Get tickets
-trello_move-card(cardId, listId)            # Move ticket
-trello_add-comment(cardId, text)            # Add comment
-trello_create-card(name, description, listId) # Create ticket
+# Trello (REST API via curl + .env.trello)
+source .env.trello
+curl -s "https://api.trello.com/1/boards/$TRELLO_DEFAULT_BOARD_ID/lists?key=$TRELLO_API_KEY&token=$TRELLO_TOKEN&fields=name&filter=open"
 
 # Git
 git checkout develop && git pull origin develop
-git checkout -b feature/{TICKET-ID}-{desc}
-git add . && git commit -m "feat({TICKET-ID}): {desc}"
-git push -u origin feature/{TICKET-ID}-{desc}
+git worktree add -b feature/{TICKET-ID}-{desc} "../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}" develop
+./scripts/setup-worktree-runtime.sh "../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}"
+./scripts/verify-worktree-runtime.sh "../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}"
+git -C "../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}" add .
+git -C "../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}" commit -m "feat({TICKET-ID}): descripción en español"
+git -C "../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}" push -u origin feature/{TICKET-ID}-{desc}
+# Only after PR exists and handoff is verified:
+git worktree remove "../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}"
+git worktree prune
 
 # Backend tests
-cd backend
+cd ../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}
 pnpm test
 pnpm test:e2e
-pnpm build
 npx prisma generate
 
 # Frontend tests
-cd frontend
+cd ../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}
 pnpm test
 pnpm test:integration
 pnpm lint
-pnpm build
 
 # PR
+cd ../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}
 gh pr create --base develop --head feature/{TICKET-ID}-{desc}
 ```
 

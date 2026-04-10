@@ -116,7 +116,7 @@ La carpeta ignorada es:
 
 Los setup files generan esos estados localmente:
 
-- `e2e/auth.setup.ts`
+- `e2e/auth-doctor.setup.ts`
 - `e2e/auth-admin.setup.ts`
 
 ## Scripts útiles

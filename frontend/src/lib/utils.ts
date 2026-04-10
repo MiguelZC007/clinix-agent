@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
 import { enUS, es } from "date-fns/locale";
+import { twMerge } from "tailwind-merge";
 import type { Locale } from "date-fns";
 
 export function cn(...inputs: ClassValue[]) {

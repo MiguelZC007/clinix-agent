@@ -1,14 +1,13 @@
 import React from "react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@/__tests__/test-utils";
-import userEvent from "@testing-library/user-event";
+import { useAuth } from "@/lib/auth/hooks";
 import { DoctorForm, type DoctorFormRef } from "../DoctorForm";
 
 vi.mock("@/lib/auth/hooks", () => ({
   useAuth: vi.fn(),
 }));
-
-import { useAuth } from "@/lib/auth/hooks";
 
 const ADMIN_USER = {
   id: "admin-user-id",
