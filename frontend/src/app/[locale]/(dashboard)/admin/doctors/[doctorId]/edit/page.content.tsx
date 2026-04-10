@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { useRouter } from "@/i18n/navigation";
-import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/ui/molecules/ConfirmDialog";
 import { useDoctor, useUpdateDoctor } from "@/features/admin/hooks/useDoctors";
-import { DoctorForm, type DoctorFormRef } from "@/features/admin/ui/DoctorForm";
 import type { CreateDoctorFormData, UpdateDoctorFormData } from "@/features/admin/schemas/doctor.schema";
 import type { UpdateDoctorRequest, UserRole } from "@/features/admin/types/doctor.types";
+import { DoctorForm, type DoctorFormRef } from "@/features/admin/ui/DoctorForm";
 import type { Specialty } from "@/features/appointments/types/appointment.types";
+import { useRouter } from "@/i18n/navigation";
+import { ConfirmDialog } from "@/ui/molecules/ConfirmDialog";
 
 type DoctorFormSubmitData = (CreateDoctorFormData | UpdateDoctorFormData) & {
   roleChange?: { from: UserRole; to: UserRole };

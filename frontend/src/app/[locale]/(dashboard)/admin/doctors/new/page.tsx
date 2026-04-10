@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { useRouter } from "@/i18n/navigation";
-import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getSpecialties } from "@/features/appointments/api/appointments.api";
-import type { Specialty } from "@/features/appointments/types/appointment.types";
 import { useCreateDoctor } from "@/features/admin/hooks/useDoctors";
-import { DoctorForm } from "@/features/admin/ui/DoctorForm";
 import type { CreateDoctorFormData, UpdateDoctorFormData } from "@/features/admin/schemas/doctor.schema";
 import type { CreateDoctorRequest } from "@/features/admin/types/doctor.types";
+import { DoctorForm } from "@/features/admin/ui/DoctorForm";
+import { getSpecialties } from "@/features/appointments/api/appointments.api";
+import type { Specialty } from "@/features/appointments/types/appointment.types";
+import { useRouter } from "@/i18n/navigation";
 
 type NewDoctorPageProps = {
   specialties: Specialty[];
@@ -69,7 +69,7 @@ export default function NewDoctorPage() {
         toast.error(t("doctors.specialtiesLoadError"));
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [t]);
 
   if (loading) {
     return <div>Loading...</div>;

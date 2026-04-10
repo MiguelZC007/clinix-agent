@@ -1,19 +1,18 @@
 "use client";
 
-import { use } from "react";
-import { useState, useEffect } from "react";
-import { useTranslations, useLocale } from "next-intl";
-import { ArrowLeft, Pencil, FileText, ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { use, useEffect, useState } from "react";
+import { ArrowLeft, ChevronLeft, ChevronRight, FileText, Pencil } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useDoctor, useDoctorAuditLogs } from "@/features/admin/hooks/useDoctors";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AuditLog } from "@/features/admin/api/audit-logs.api";
+import { useDoctor, useDoctorAuditLogs } from "@/features/admin/hooks/useDoctors";
 import { useRouter } from "@/i18n/navigation";
-import { getSafeErrorMessage } from "@/lib/utils/error-handler";
 import { toDateLocale } from "@/lib/utils";
+import { getSafeErrorMessage } from "@/lib/utils/error-handler";
 import { ErrorState } from "@/ui/molecules/ErrorState";
 import { PageHeader } from "@/ui/molecules/PageHeader";
 

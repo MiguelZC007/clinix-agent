@@ -25,7 +25,10 @@ Dual-app medical assistant: conversational AI for doctors via WhatsApp + web das
 | When | Load | File |
 |------|------|------|
 | Starting any ticket | ticket-router | `.opencode/rules/ticket-router.md` |
+| Starting any ticket | worktree-first | `.opencode/rules/worktree-first.md` |
 | Before ANY commit | pre-commit-gate | `.opencode/rules/pre-commit-gate.md` |
+| Before ANY commit | commit-language | `.opencode/rules/commit-language.md` |
+| Before tests/commit/PR in a worktree | worktree-runtime-gate | `.opencode/rules/worktree-runtime-gate.md` |
 | Writing new code | test-mandate | `.opencode/rules/test-mandate.md` |
 | Writing backend tests | backend-testing | `.opencode/rules/backend-testing.md` |
 | Writing E2E frontend tests | frontend-e2e | `.opencode/rules/frontend-e2e.md` |
@@ -57,7 +60,7 @@ cd frontend && pnpm test && pnpm lint && pnpm build
 
 ## Conventions
 
-- **Commits:** Conventional commits only (`feat`, `fix`, `refactor`, `test`, `docs`)
+- **Commits:** Conventional commits only (`feat`, `fix`, `refactor`, `test`, `docs`) y SIEMPRE en español
 - **Branches:** `feature/{TICKET-ID}-{desc}`, `fix/{TICKET-ID}-{desc}`
 - **PR target:** NEVER merge to `main` — always target `develop`
 - **Tests:** Every new code MUST have tests (see `test-mandate`)
@@ -71,6 +74,9 @@ cd frontend && pnpm test && pnpm lint && pnpm build
   - `backend/` for backend branches, commits, pushes, and PRs
   - `frontend/` for frontend branches, commits, pushes, and PRs
 - Never create branches, commits, pushes, or PRs from the parent `clinix-agent/` folder.
+- **Worktree first:** todo ticket debe crear primero una worktree dedicada antes de analizar, editar, testear o commitear.
+- **Runtime por worktree:** todas las worktrees comparten la misma base de datos, pero cada una debe usar puertos propios y libres para frontend/backend.
+- **No tests, no commit, no PR:** si la worktree no puede ejecutar las pruebas requeridas con su entorno listo, se bloquea el handoff.
 
 ## Architecture
 

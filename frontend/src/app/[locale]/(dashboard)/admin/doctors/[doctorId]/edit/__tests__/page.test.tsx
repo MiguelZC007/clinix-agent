@@ -1,6 +1,10 @@
 import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { toast } from "sonner";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@/__tests__/test-utils";
+import { useDoctor, useUpdateDoctor } from "@/features/admin/hooks/useDoctors";
+import { useAuth } from "@/lib/auth/hooks";
+import { EditDoctorPageContent } from "../page.content";
 
 // Stable router mock — shared reference for push assertions
 const mockRouterPush = vi.fn();
@@ -31,11 +35,6 @@ vi.mock("sonner", () => ({
     error: vi.fn(),
   },
 }));
-
-import { useDoctor, useUpdateDoctor } from "@/features/admin/hooks/useDoctors";
-import { useAuth } from "@/lib/auth/hooks";
-import { toast } from "sonner";
-import { EditDoctorPageContent } from "../page.content";
 
 const ADMIN_USER = {
   id: "admin-user-id",

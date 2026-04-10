@@ -1,7 +1,6 @@
 "use client";
 
-import { use } from "react";
-import { useState, useEffect } from "react";
+import { use, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { getSpecialties } from "@/features/appointments/api/appointments.api";
@@ -26,7 +25,7 @@ export default function EditDoctorPage({ params }: EditDoctorPageProps) {
         toast.error(t("doctors.specialtiesLoadError"));
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [t]);
 
   if (loading) {
     return (
