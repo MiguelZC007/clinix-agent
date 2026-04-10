@@ -1,12 +1,9 @@
 {
   "name": "clinix-agent",
   "version": "1.0.0",
+  "private": true,
   "description": "",
   "main": "index.js",
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
   "engines": {
     "node": ">=22",
     "pnpm": ">=10"

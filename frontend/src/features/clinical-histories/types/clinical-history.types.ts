@@ -1,6 +1,7 @@
 export type {
   VitalSigns,
   ClinicalHistory,
+  ClinicalHistoryListItem,
 } from "../schemas/clinical-history.schema";
 import type { ClinicalHistory } from "../schemas/clinical-history.schema";
 

@@ -10,12 +10,13 @@ import {
 } from "../api/clinical-histories.api";
 import type {
   ClinicalHistory,
+  ClinicalHistoryListItem,
   ClinicalHistoriesListParams,
 } from "../types/clinical-history.types";
 import type { CreateClinicHistoryBackendPayload } from "../types/create-clinical-history-backend.types";
 
 type UseClinicalHistoryListState = {
-  data: PaginatedData<ClinicalHistory> | null;
+  data: PaginatedData<ClinicalHistoryListItem> | null;
   isLoading: boolean;
   error: Error | null;
 };

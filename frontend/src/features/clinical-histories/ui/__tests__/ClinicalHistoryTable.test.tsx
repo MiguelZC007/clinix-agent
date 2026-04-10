@@ -1,14 +1,14 @@
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@/__tests__/test-utils';
-import { MOCK_CLINICAL_HISTORIES } from '../../__mocks__/clinical-histories.mock';
+import { MOCK_CLINICAL_HISTORY_LIST_ITEMS } from '../../__mocks__/clinical-histories.mock';
 import { ClinicalHistoryTable } from '../ClinicalHistoryTable';
 
 describe('ClinicalHistoryTable', () => {
-  it('renderiza columnas Paciente, Fecha, Motivo, Diagnóstico y Acciones', () => {
+  it('renderiza columnas Paciente, Fecha, Motivo, Profesional y Acciones', () => {
     render(
       <ClinicalHistoryTable
-        histories={MOCK_CLINICAL_HISTORIES}
+        histories={MOCK_CLINICAL_HISTORY_LIST_ITEMS}
         page={1}
         totalPages={1}
         onPageChange={vi.fn()}
@@ -16,9 +16,9 @@ describe('ClinicalHistoryTable', () => {
       />,
     );
     expect(screen.getByRole('table')).toBeInTheDocument();
-    expect(screen.getByText(MOCK_CLINICAL_HISTORIES[0].patientName!)).toBeInTheDocument();
-    expect(screen.getByText(MOCK_CLINICAL_HISTORIES[0].reason)).toBeInTheDocument();
-    expect(screen.getByText(MOCK_CLINICAL_HISTORIES[0].diagnosis)).toBeInTheDocument();
+    expect(screen.getByText(MOCK_CLINICAL_HISTORY_LIST_ITEMS[0].patientName!)).toBeInTheDocument();
+    expect(screen.getByText(MOCK_CLINICAL_HISTORY_LIST_ITEMS[0].reason)).toBeInTheDocument();
+    expect(screen.getByText('María González · Cardiología')).toBeInTheDocument();
   });
 
   it('llama onView con el item correcto al hacer click en fila', async () => {
@@ -26,24 +26,24 @@ describe('ClinicalHistoryTable', () => {
     const onView = vi.fn();
     render(
       <ClinicalHistoryTable
-        histories={MOCK_CLINICAL_HISTORIES}
+        histories={MOCK_CLINICAL_HISTORY_LIST_ITEMS}
         page={1}
         totalPages={1}
         onPageChange={vi.fn()}
         onView={onView}
       />,
     );
-    const row = screen.getByText(MOCK_CLINICAL_HISTORIES[0].patientName!).closest('tr');
+    const row = screen.getByText(MOCK_CLINICAL_HISTORY_LIST_ITEMS[0].patientName!).closest('tr');
     if (row) {
       await user.click(row);
-      expect(onView).toHaveBeenCalledWith(MOCK_CLINICAL_HISTORIES[0]);
+      expect(onView).toHaveBeenCalledWith(MOCK_CLINICAL_HISTORY_LIST_ITEMS[0]);
     }
   });
 
   it('renderiza paginación cuando totalPages > 1', () => {
     render(
       <ClinicalHistoryTable
-        histories={MOCK_CLINICAL_HISTORIES}
+        histories={MOCK_CLINICAL_HISTORY_LIST_ITEMS}
         page={1}
         totalPages={3}
         onPageChange={vi.fn()}
@@ -58,7 +58,7 @@ describe('ClinicalHistoryTable', () => {
     const onPageChange = vi.fn();
     render(
       <ClinicalHistoryTable
-        histories={MOCK_CLINICAL_HISTORIES}
+        histories={MOCK_CLINICAL_HISTORY_LIST_ITEMS}
         page={1}
         totalPages={2}
         onPageChange={onPageChange}

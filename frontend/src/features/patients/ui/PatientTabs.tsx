@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { ClinicalHistory } from "@/features/clinical-histories/types/clinical-history.types";
+import type { ClinicalHistoryListItem } from "@/features/clinical-histories/types/clinical-history.types";
 import { Link } from "@/i18n/navigation";
 import { formatDateToYYYYMMDD, toDateLocale } from "@/lib/utils";
 import { getSafeErrorMessage } from "@/lib/utils/error-handler";
@@ -71,7 +71,7 @@ function AntecedentsSection({
   );
 }
 
-function PatientHistoryCard({ history }: { history: ClinicalHistory }) {
+function PatientHistoryCard({ history }: { history: ClinicalHistoryListItem }) {
   const t = useTranslations();
   const dateLocale = toDateLocale(useLocale());
   const doctorLabel =
@@ -107,9 +107,11 @@ function PatientHistoryCard({ history }: { history: ClinicalHistory }) {
                 </div>
               </div>
               <p className="font-medium">{history.reason}</p>
-              <p className="line-clamp-2 text-sm text-muted-foreground">
-                {history.treatment || history.symptoms}
-              </p>
+              {history.doctorName && (
+                <p className="line-clamp-2 text-sm text-muted-foreground">
+                  {doctorLabel}
+                </p>
+              )}
             </div>
           </div>
         </CardContent>

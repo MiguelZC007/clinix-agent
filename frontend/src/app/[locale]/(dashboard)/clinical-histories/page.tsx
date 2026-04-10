@@ -5,7 +5,7 @@ import { Plus, LayoutGrid, Table } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { useClinicalHistoryList } from "@/features/clinical-histories/hooks/useClinicalHistories";
-import type { ClinicalHistory } from "@/features/clinical-histories/types/clinical-history.types";
+import type { ClinicalHistoryListItem } from "@/features/clinical-histories/types/clinical-history.types";
 import { ClinicalHistoryCard } from "@/features/clinical-histories/ui/ClinicalHistoryCard";
 import { ClinicalHistoryFilters } from "@/features/clinical-histories/ui/ClinicalHistoryFilters";
 import { ClinicalHistoryTable } from "@/features/clinical-histories/ui/ClinicalHistoryTable";
@@ -38,7 +38,7 @@ export default function ClinicalHistoriesPage() {
   const histories = data?.items ?? [];
   const totalPages = data?.totalPages ?? 0;
 
-  const handleView = (history: ClinicalHistory) => {
+  const handleView = (history: ClinicalHistoryListItem) => {
     router.push(`/clinical-histories/${history.id}`);
   };
 

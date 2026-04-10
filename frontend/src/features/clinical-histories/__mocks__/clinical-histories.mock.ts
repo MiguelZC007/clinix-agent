@@ -1,10 +1,15 @@
-import type { ClinicalHistory } from '../types/clinical-history.types';
+import type {
+  ClinicalHistory,
+  ClinicalHistoryListItem,
+} from '../types/clinical-history.types';
 
 export const MOCK_CLINICAL_HISTORIES: ClinicalHistory[] = [
   {
     id: '1',
     patientId: '1',
     patientName: 'Juan Pérez',
+    doctorName: 'María González',
+    doctorSpecialty: 'Cardiología',
     reason: 'Dolor abdominal persistente desde hace 3 días',
     symptoms: 'Dolor en zona epigástrica, náuseas ocasionales',
     physicalExam: 'Abdomen blando, dolor a la palpación en epigastrio',
@@ -25,6 +30,8 @@ export const MOCK_CLINICAL_HISTORIES: ClinicalHistory[] = [
     id: '2',
     patientId: '2',
     patientName: 'María González',
+    doctorName: 'Carlos Ruiz',
+    doctorSpecialty: 'Medicina general',
     reason: 'Control rutinario',
     symptoms: 'Sin síntomas actuales',
     physicalExam: 'Examen físico normal',
@@ -46,6 +53,18 @@ export const MOCK_CLINICAL_HISTORIES: ClinicalHistory[] = [
 export function getMockClinicalHistoryById(id: string): ClinicalHistory | undefined {
   return MOCK_CLINICAL_HISTORIES.find((history) => history.id === id);
 }
+
+export const MOCK_CLINICAL_HISTORY_LIST_ITEMS: ClinicalHistoryListItem[] =
+  MOCK_CLINICAL_HISTORIES.map((history) => ({
+    id: history.id,
+    patientId: history.patientId,
+    patientName: history.patientName,
+    doctorName: history.doctorName,
+    doctorSpecialty: history.doctorSpecialty,
+    reason: history.reason,
+    createdAt: history.createdAt,
+    updatedAt: history.updatedAt,
+  }));
 
 export function getMockClinicalHistoriesByPatientId(patientId: string): ClinicalHistory[] {
   return MOCK_CLINICAL_HISTORIES.filter((history) => history.patientId === patientId);

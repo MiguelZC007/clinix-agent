@@ -88,6 +88,48 @@ function toBackendClinicalHistory(h: {
   };
 }
 
+function toBackendClinicalHistoryListItem(h: {
+  id: string;
+  patientId: string;
+  patientName?: string;
+  doctorName?: string;
+  doctorSpecialty?: string;
+  reason: string;
+  createdAt: string;
+  updatedAt: string;
+}) {
+  const [patientFirstName, ...patientLastNameParts] = (h.patientName ?? "")
+    .split(" ")
+    .filter(Boolean);
+  const [doctorFirstName, ...doctorLastNameParts] = (h.doctorName ?? "")
+    .split(" ")
+    .filter(Boolean);
+
+  return {
+    id: h.id,
+    patientId: h.patientId,
+    doctorId: `doctor-${h.id}`,
+    specialtyId: `specialty-${h.id}`,
+    specialtyCode: Number(h.id) || 1,
+    appointmentId: `apt-${h.id}`,
+    consultationReason: h.reason,
+    patient: {
+      id: h.patientId,
+      patientNumber: Number(h.id) || 1,
+      name: patientFirstName ?? "",
+      lastName: patientLastNameParts.join(" ") ?? "",
+    },
+    doctor: {
+      id: `doctor-${h.id}`,
+      name: doctorFirstName ?? "",
+      lastName: doctorLastNameParts.join(" ") ?? "",
+      specialty: h.doctorSpecialty,
+    },
+    createdAt: h.createdAt,
+    updatedAt: h.updatedAt,
+  };
+}
+
 function convertAppointmentToBackendFormat(appointment: Appointment) {
   const [startHours, startMinutes] = appointment.startTime
     .split(":")
@@ -444,7 +486,9 @@ export const handlers = [
       Math.min(100, parseInt(url.searchParams.get("pageSize") ?? "10", 10)),
     );
     const patientId = url.searchParams.get("patientId");
-    let backendItems = MOCK_CLINICAL_HISTORIES.map(toBackendClinicalHistory);
+    let backendItems = MOCK_CLINICAL_HISTORIES.map(
+      toBackendClinicalHistoryListItem,
+    );
     if (patientId) {
       backendItems = backendItems.filter(
         (item) => item.patientId === patientId,

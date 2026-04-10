@@ -8,6 +8,7 @@ import { AllExceptionsFilter } from 'src/core/filters/all-exceptions.filter';
 import { HttpExceptionFilter } from 'src/core/filters/http-exception.filter';
 import { PrismaExceptionFilter } from 'src/core/filters/prisma-exception.filter';
 import { TwilioWebhookGuard } from 'src/modules/twilio/guards/twilio-webhook.guard';
+import environment from 'src/core/config/environments';
 
 describe('Twilio Webhook - Flujo Real de Anamnesis (e2e)', () => {
   let app: INestApplication;
@@ -136,18 +137,18 @@ describe('Twilio Webhook - Flujo Real de Anamnesis (e2e)', () => {
     console.log('   ✅ Limpieza completada\n');
   }
 
-  function createWebhookPayload(message: string): Record<string, string> {
-    messageCounter++;
-    return {
-      MessageSid: `SM${Date.now()}${messageCounter}`,
-      AccountSid: 'ACtest123456',
-      From: `whatsapp:${testDoctorPhone}`,
-      To: 'whatsapp:+14155238886',
-      Body: message,
-      NumMedia: '0',
-      SmsStatus: 'received',
-    };
-  }
+function createWebhookPayload(message: string): Record<string, string> {
+  messageCounter++;
+  return {
+    MessageSid: `SM${Date.now()}${messageCounter}`,
+    AccountSid: 'ACtest123456',
+    From: `whatsapp:${testDoctorPhone}`,
+    To: environment.TWILIO_WHATSAPP_FROM || 'whatsapp:+14155238886',
+    Body: message,
+    NumMedia: '0',
+    SmsStatus: 'received',
+  };
+}
 
   async function sendWebhookMessage(
     message: string,

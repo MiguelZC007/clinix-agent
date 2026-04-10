@@ -475,6 +475,19 @@ describe('ClinicHistoryService', () => {
   });
 
   describe('findAll', () => {
+    const mockClinicHistoryListItem = {
+      id: 'clinic-history-uuid',
+      patientId: 'patient-uuid',
+      doctorId: 'doctor-uuid',
+      specialtyId: 'specialty-uuid',
+      appointmentId: 'appointment-uuid',
+      consultationReason: 'Dolor de cabeza',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      patient: mockPatient,
+      doctor: mockDoctor,
+    };
+
     beforeEach(() => {
       prisma.$transaction.mockImplementation((args: unknown[]) =>
         Promise.all(args as Promise<unknown>[]),
@@ -506,6 +519,93 @@ describe('ClinicHistoryService', () => {
       expect(prisma.clinicHistory.count).toHaveBeenCalledWith({
         where: { doctorId: 'doctor-uuid' },
       });
+    });
+
+    it('debe usar una consulta liviana sin transaction para el listado paginado', async () => {
+      prisma.clinicHistory.findMany.mockResolvedValue([mockClinicHistoryListItem]);
+
+      await service.findAll({ page: 1, pageSize: 10 }, 'doctor-uuid');
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.clinicHistory.findMany).toHaveBeenCalledWith({
+        where: { doctorId: 'doctor-uuid' },
+        skip: 0,
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          patientId: true,
+          doctorId: true,
+          specialtyId: true,
+          appointmentId: true,
+          consultationReason: true,
+          createdAt: true,
+          updatedAt: true,
+          patient: {
+            select: {
+              id: true,
+              patientNumber: true,
+              user: {
+                select: {
+                  name: true,
+                  lastName: true,
+                },
+              },
+            },
+          },
+          doctor: {
+            select: {
+              id: true,
+              user: {
+                select: {
+                  name: true,
+                  lastName: true,
+                },
+              },
+              specialty: {
+                select: {
+                  name: true,
+                  specialtyCode: true,
+                },
+              },
+            },
+          },
+        },
+      });
+    });
+
+    it('debe retornar items livianos sin detalles completos en el listado', async () => {
+      prisma.clinicHistory.findMany.mockResolvedValue([mockClinicHistoryListItem]);
+
+      const result = await service.findAll(
+        { page: 1, pageSize: 10 },
+        'doctor-uuid',
+      );
+
+      expect(result.items).toEqual([
+        expect.objectContaining({
+          id: 'clinic-history-uuid',
+          consultationReason: 'Dolor de cabeza',
+          patient: expect.objectContaining({
+            id: 'patient-uuid',
+            patientNumber: 1,
+            name: 'Juan',
+            lastName: 'Pérez',
+          }),
+          doctor: expect.objectContaining({
+            id: 'doctor-uuid',
+            name: 'María',
+            lastName: 'González',
+            specialty: 'Cardiología',
+          }),
+        }),
+      ]);
+      expect(result.items[0]).not.toHaveProperty('diagnostics');
+      expect(result.items[0]).not.toHaveProperty('physicalExams');
+      expect(result.items[0]).not.toHaveProperty('vitalSigns');
+      expect(result.items[0]).not.toHaveProperty('prescription');
+      expect(result.items[0]).not.toHaveProperty('symptoms');
+      expect(result.items[0]).not.toHaveProperty('treatment');
     });
 
     it('debe construir where con search cuando se pasa search', async () => {

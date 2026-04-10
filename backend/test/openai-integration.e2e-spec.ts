@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { OpenaiModule } from 'src/modules/openai/openai.module';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OpenaiService } from 'src/modules/openai/openai.service';
 import { ConversationService } from 'src/modules/openai/conversation.service';
@@ -16,7 +17,7 @@ describe('OpenAI Integration - Anamnesis Flow (e2e)', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      providers: [OpenaiService, ConversationService, PrismaService],
+      imports: [OpenaiModule],
     }).compile();
 
     openaiService = moduleFixture.get<OpenaiService>(OpenaiService);
