@@ -2,6 +2,8 @@
 
 Every worktree must have a ready runtime before running tests, creating commits, or opening a PR.
 
+This gate is STRICT. Runtime verification is not optional and must be repeated whenever env, ports, generated artifacts, or local services change.
+
 ## Runtime Model
 
 - All worktrees share the SAME database.
@@ -20,6 +22,7 @@ All must pass inside the worktree:
 □ Generated clients/artifacts ready if required (e.g. Prisma)
 □ Required local services can start with the worktree env
 □ Required tests can run successfully from the worktree
+□ No other active worktree is using the same backend/frontend ports
 ```
 
 ## Commands
@@ -44,3 +47,12 @@ If runtime setup or verification fails:
 3. Re-run setup and verification
 4. Only then run tests
 5. If tests still cannot run, block commit and PR
+
+## Hard Enforcement
+
+- No verified runtime = no tests
+- No verified runtime = no commit
+- No verified runtime = no push
+- No verified runtime = no PR
+- If ports collide with another worktree, STOP and reallocate ports before doing anything else
+- If generated artifacts are stale (for example Prisma client), regenerate them inside the same worktree before continuing

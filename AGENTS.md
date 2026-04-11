@@ -68,15 +68,16 @@ cd frontend && pnpm test && pnpm lint && pnpm build
 - **Barrel files:** Only re-export from the same module's own files. Never re-export from other modules (e.g. `moduleX/dto/index.ts` must NOT `export * from '../../moduleY/dto/...'`)
 - **No secrets:** Never commit `.env`, credentials, tokens
 - **No `rm` destructive:** Use minimal, reversible changes
-- **Git repo boundary:** `clinix-agent/` is a coordination folder, not a product git repo.
-- Work from `clinix-agent/` for shared context, docs, backlog, `.opencode`, `.atl`, and Trello coordination.
-- Execute all product git operations only from the correct repo:
-  - `backend/` for backend branches, commits, pushes, and PRs
-  - `frontend/` for frontend branches, commits, pushes, and PRs
-- Never create branches, commits, pushes, or PRs from the parent `clinix-agent/` folder.
+- **Git repo boundary:** `clinix-agent/` is the REAL git repository root for the product.
+- **Monorepo multipaquete:** `backend/` and `frontend/` are packages/apps inside the SAME git repo, not separate git repositories.
+- Work from `clinix-agent/` for shared context, docs, backlog, `.opencode`, `.atl`, Trello coordination, git branches, worktrees, commits, pushes, and PRs.
+- Use package directories (`backend/`, `frontend/`) as execution targets for package-specific commands, but treat git history, branches, PRs, and worktrees as root-repo concerns.
+- Never assume `backend/` or `frontend/` are standalone git repos.
 - **Worktree first:** todo ticket debe crear primero una worktree dedicada antes de analizar, editar, testear o commitear.
+- **Worktree strict mode:** una vez seleccionado el ticket, TODO el trabajo real debe hacerse desde la worktree dedicada. Nada de "solo mirar rápido" o "solo correr un comando" desde el checkout principal.
 - **Runtime por worktree:** todas las worktrees comparten la misma base de datos, pero cada una debe usar puertos propios y libres para frontend/backend.
 - **No tests, no commit, no PR:** si la worktree no puede ejecutar las pruebas requeridas con su entorno listo, se bloquea el handoff.
+- **No runtime verificado, no push:** si `setup-worktree-runtime.sh` y `verify-worktree-runtime.sh` no pasaron en ESA worktree, no se puede testear, commitear, pushear ni abrir PR.
 
 ## Architecture
 

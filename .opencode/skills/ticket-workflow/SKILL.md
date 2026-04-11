@@ -20,7 +20,7 @@ metadata:
 
 | Rule | File | When |
 |------|------|------|
-| ticket-router | `.opencode/rules/ticket-router.md` | Before creating branches — determines which repo(s) |
+| ticket-router | `.opencode/rules/ticket-router.md` | Before creating branches — determines which package(s) are affected |
 | worktree-first | `.opencode/rules/worktree-first.md` | Before ANY ticket work — blocks work outside a dedicated worktree |
 | worktree-runtime-gate | `.opencode/rules/worktree-runtime-gate.md` | Before tests, commit, and PR — ensures env/ports/runtime are ready |
 | pre-commit-gate | `.opencode/rules/pre-commit-gate.md` | Before every commit — mandatory test/build gate |
@@ -93,14 +93,17 @@ git -C "$WORKTREE_PATH" status
 **Critical worktree rule:**
 - Worktree creation is the FIRST mandatory step after ticket selection. Do not analyze, edit, test, or commit ticket code before the worktree exists.
 - Once the worktree is created, all code changes, tests, commits, pushes, and PR commands MUST run from the worktree path.
+- Once the worktree exists, do NOT go back to the main checkout for the same ticket, not even for a quick inspection or a single command.
 - Do NOT implement the ticket in the main checkout.
 - Keep one worktree per active ticket branch.
+- Do NOT reuse one worktree for multiple tickets.
 
 **Runtime rule per worktree:**
 - Every worktree must reuse the SAME shared database connection.
 - Every worktree must get its OWN free backend/frontend ports.
 - The runtime setup must search free ports so worktrees never collide.
 - If env variables or ports are missing, STOP and fix runtime before testing.
+- If `setup-worktree-runtime.sh` and `verify-worktree-runtime.sh` did not pass in that exact worktree, STOP: no tests, no commit, no push, no PR.
 
 **Branch naming convention:**
 | Prefix | Meaning | Example |
@@ -110,13 +113,15 @@ git -C "$WORKTREE_PATH" status
 | `refactor/` | Code improvement | `refactor/T-5-openaiservice` |
 | `docs/` | Documentation | `docs/PRD-update` |
 
-**Determine which repo needs the branch:**
-| Ticket prefix | Repo(s) |
+**Determine which package(s) are affected inside the monorepo:**
+| Ticket prefix | Package(s) |
 |---------------|---------|
 | PAC-, CIT-, HC-, OAI-, TWA-, CTX-, AUTH-, DB-, ADMIN-1, ADMIN-2, RBAC-, AUDIT-, FALLBACK- | backend only |
 | FE-, DSH- | frontend only |
 | ADMIN-3, PDF-2, SYNC-3 | frontend only |
-| ADMIN-1+frontend, cross-cutting | both repos |
+| ADMIN-1+frontend, cross-cutting | backend + frontend |
+
+Important: this project uses ONE git repository at the monorepo root. Create ONE branch and ONE worktree per ticket from the root repo, then run package-specific commands inside `backend/` or `frontend/` as needed.
 
 ---
 
@@ -232,6 +237,11 @@ pnpm test:integration        # integration tests (if applicable)
 3. Re-run runtime verification
 4. Only then run tests again
 
+**Absolute worktree enforcement:**
+- No dedicated worktree = no analysis, no edits, no tests, no commit.
+- No verified runtime in that worktree = no tests, no commit, no push, no PR.
+- The main checkout is coordination-only once the ticket worktree exists.
+
 ### 3.3 Verification Gate
 
 ```bash
@@ -248,7 +258,7 @@ pnpm test:integration       # if applicable
 pnpm lint
 ```
 
-**Important:** use the verification commands required by the repo and ticket, but do NOT delete the worktree until all mandatory checks are green.
+**Important:** use the verification commands required by the affected package(s) and ticket, but do NOT delete the worktree until all mandatory checks are green.
 
 **Hard gate:** if you cannot run the required tests successfully from the worktree with the correct runtime, you MUST NOT create a commit and MUST NOT create a PR.
 
@@ -419,7 +429,7 @@ git worktree prune
 - NEVER remove the worktree if tests/review are still failing
 - NEVER commit or open a PR if runtime verification failed in the worktree
 - If the user asks to continue iterating on the same ticket, keep the worktree
-- If both repos are involved, verify and clean up each repo worktree independently
+- If both packages are involved, verify the required checks for each package from the SAME ticket worktree before cleanup
 
 ### Move Trello Card to Done (after PR merge)
 
@@ -529,17 +539,13 @@ If tokens run out mid-workflow:
 source .env.trello
 curl -s "https://api.trello.com/1/boards/$TRELLO_DEFAULT_BOARD_ID/lists?key=$TRELLO_API_KEY&token=$TRELLO_TOKEN&fields=name&filter=open"
 
-# Git
-git checkout develop && git pull origin develop
-git worktree add -b feature/{TICKET-ID}-{desc} "../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}" develop
-./scripts/setup-worktree-runtime.sh "../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}"
-./scripts/verify-worktree-runtime.sh "../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}"
+# Git (desde la raíz del monorepo)
+./scripts/new-ticket-worktree.sh feature/{TICKET-ID}-{desc} develop
 git -C "../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}" add .
 git -C "../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}" commit -m "feat({TICKET-ID}): descripción en español"
 git -C "../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}" push -u origin feature/{TICKET-ID}-{desc}
 # Only after PR exists and handoff is verified:
-git worktree remove "../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}"
-git worktree prune
+./scripts/remove-ticket-worktree.sh feature/{TICKET-ID}-{desc}
 
 # Backend tests
 cd ../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}

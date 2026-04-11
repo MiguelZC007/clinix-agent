@@ -1,6 +1,6 @@
 # Rule: ticket-router
 
-Automatically determines which repo(s) to work on based on ticket prefix.
+Automatically determines which package(s) to work on inside the monorepo based on ticket prefix.
 
 ## Routing Table
 
@@ -36,9 +36,9 @@ Automatically determines which repo(s) to work on based on ticket prefix.
 
 ## Usage
 
-Before creating branches, run:
+Before creating the ticket branch/worktree, run:
 ```
-Read this file → Match ticket prefix → Know which repos need changes
+Read this file → Match ticket prefix → Know which package(s) need changes
 ```
 
-If a ticket affects both repos (rare), create the same branch name in both.
+If a ticket affects both packages (rare), use ONE branch and ONE worktree at the monorepo root, then work in both `backend/` and `frontend/` as needed.
