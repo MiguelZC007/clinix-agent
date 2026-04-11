@@ -49,9 +49,12 @@
 ### ticket-workflow
 - Ticket work follows Trello → worktree → SDD → tests → judge → commit → PR → verify → cleanup.
 - Create the dedicated worktree BEFORE analysis, edits, tests, or commits.
+- Once a ticket is selected, ALL real work must happen from the dedicated worktree path — never from the main checkout, not even for a quick check or one-off command.
 - Load `ticket-router`, `worktree-first`, `worktree-runtime-gate`, `pre-commit-gate`, `commit-language`, and `test-mandate` when the workflow reaches those steps.
 - Every worktree must share the same DB but use its own free backend/frontend ports.
 - If runtime or required tests cannot run from the worktree, commit and PR are blocked.
+- If `setup-worktree-runtime.sh` and `verify-worktree-runtime.sh` have not passed in THAT worktree, testing, commit, push, and PR are blocked.
+- Never reuse one worktree for multiple tickets and never jump back to the main checkout for the same ticket after the worktree exists.
 - Conventional commits for this project must be written in Spanish.
 - Use RED → GREEN → REFACTOR per task; every changed behavior needs tests first.
 - Save each SDD phase to Engram using stable `sdd/{ticket-id}/...` topic keys.

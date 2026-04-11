@@ -10,6 +10,7 @@ ALL must pass before `git commit`:
 □ Unit tests for new code exist
 □ Worktree exists and is the active execution path for the ticket
 □ Worktree runtime is ready (env + free ports + required services)
+□ Runtime was verified in THAT same worktree before commit
 □ ALL project tests pass (no regressions)
 □ Required lint/type/test checks pass for the affected repo
 □ Prisma generates (backend, if schema changed)
@@ -49,6 +50,8 @@ If ANY gate fails:
 4. Re-run the failed gate
 5. Re-run ALL gates
 5. Only then proceed to commit
+
+Never bypass this by committing from the main checkout or from a different worktree.
 
 ## Exceptions
 
