@@ -6,11 +6,14 @@ import {
 } from "@/types/contracts/api-response";
 import type { PaginatedData } from "@/types/contracts/api-response";
 import {
+  clinicalHistoryListItemBackendSchema,
   clinicalHistoryBackendSchema,
+  mapClinicalHistoryListItemFromBackend,
   mapClinicalHistoryFromBackend,
 } from "../schemas/clinical-history.schema";
 import type {
   ClinicalHistory,
+  ClinicalHistoryListItem,
   ClinicalHistoriesListParams,
 } from "../types/clinical-history.types";
 import type { CreateClinicHistoryBackendPayload } from "../types/create-clinical-history-backend.types";
@@ -23,16 +26,16 @@ function parseApiData<T>(response: { data: T }): T {
 
 export async function getClinicalHistories(
   params?: ClinicalHistoriesListParams,
-): Promise<PaginatedData<ClinicalHistory>> {
+): Promise<PaginatedData<ClinicalHistoryListItem>> {
   const response = await client.get(
     ENDPOINT,
-    PaginatedResponseSchema(clinicalHistoryBackendSchema),
+    PaginatedResponseSchema(clinicalHistoryListItemBackendSchema),
     { params },
   );
   const paginated = response.data;
   return {
     ...paginated,
-    items: paginated.items.map(mapClinicalHistoryFromBackend),
+    items: paginated.items.map(mapClinicalHistoryListItemFromBackend),
   };
 }
 

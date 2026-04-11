@@ -6,7 +6,7 @@ import {
   getPatientClinicHistoryFilterOptions,
 } from "@/features/clinical-histories/api/clinical-histories.api";
 import type { PatientClinicHistoryFilterOptions } from "@/features/clinical-histories/api/clinical-histories.api";
-import type { ClinicalHistory } from "@/features/clinical-histories/types/clinical-history.types";
+import type { ClinicalHistoryListItem } from "@/features/clinical-histories/types/clinical-history.types";
 import type { ClinicalHistoriesListParams } from "@/features/clinical-histories/types/clinical-history.types";
 import { toError } from "@/lib/utils";
 import type { PaginatedData } from "@/types/contracts/api-response";
@@ -138,7 +138,7 @@ export function usePatientAntecedents(patientId: string | undefined) {
 }
 
 type UsePatientClinicHistoriesState = {
-  data: PaginatedData<ClinicalHistory> | null;
+  data: PaginatedData<ClinicalHistoryListItem> | null;
   isLoading: boolean;
   error: Error | null;
 };

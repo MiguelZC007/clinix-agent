@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { MOCK_CLINICAL_HISTORIES } from '../__mocks__/clinical-histories.mock';
+import {
+  MOCK_CLINICAL_HISTORIES,
+  MOCK_CLINICAL_HISTORY_LIST_ITEMS,
+} from '../__mocks__/clinical-histories.mock';
 import {
   getClinicalHistories,
   getClinicalHistoryById,
@@ -9,17 +12,21 @@ import {
 describe('getClinicalHistories', () => {
   it('retorna lista de historiales paginada', async () => {
     const result = await getClinicalHistories();
-    expect(result.items).toHaveLength(MOCK_CLINICAL_HISTORIES.length);
-    expect(result.total).toBe(MOCK_CLINICAL_HISTORIES.length);
+    expect(result.items).toHaveLength(MOCK_CLINICAL_HISTORY_LIST_ITEMS.length);
+    expect(result.total).toBe(MOCK_CLINICAL_HISTORY_LIST_ITEMS.length);
     expect(result.page).toBe(1);
     expect(result.pageSize).toBe(10);
     expect(result.totalPages).toBe(1);
+    expect(result.items[0]).toMatchObject(MOCK_CLINICAL_HISTORY_LIST_ITEMS[0]);
+    expect(result.items[0]).not.toHaveProperty('diagnosis');
+    expect(result.items[0]).not.toHaveProperty('symptoms');
+    expect(result.items[0]).not.toHaveProperty('treatment');
   });
 
   it('retorna página solicitada con page y pageSize', async () => {
     const result = await getClinicalHistories({ page: 1, pageSize: 1 });
     expect(result.items).toHaveLength(1);
-    expect(result.total).toBe(MOCK_CLINICAL_HISTORIES.length);
+    expect(result.total).toBe(MOCK_CLINICAL_HISTORY_LIST_ITEMS.length);
     expect(result.page).toBe(1);
     expect(result.pageSize).toBe(1);
     expect(result.totalPages).toBe(2);

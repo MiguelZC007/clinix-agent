@@ -27,6 +27,22 @@ export const clinicalHistorySchema = z.object({
 });
 export type ClinicalHistory = z.infer<typeof clinicalHistorySchema>;
 
+export const clinicalHistoryListItemSchema = z.object({
+  id: z.string(),
+  patientId: z.string(),
+  doctorId: z.string().optional(),
+  specialtyId: z.string().optional(),
+  specialtyCode: z.number().optional(),
+  appointmentId: z.string().nullable().optional(),
+  patientName: z.string().optional(),
+  doctorName: z.string().optional(),
+  doctorSpecialty: z.string().optional(),
+  reason: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type ClinicalHistoryListItem = z.infer<typeof clinicalHistoryListItemSchema>;
+
 export const vitalSignsFormSchema = z.object({
   bloodPressure: z.string().min(1, "errors.required"),
   heartRate: z.number().min(1, "errors.required"),
@@ -48,11 +64,35 @@ export const clinicalHistoryFormSchema = z.object({
 export type ClinicalHistoryFormData = z.infer<typeof clinicalHistoryFormSchema>;
 
 export const clinicalHistoriesListResponseSchema = z.object({
-  items: z.array(clinicalHistorySchema),
+  items: z.array(clinicalHistoryListItemSchema),
   total: z.number(),
   page: z.number(),
   pageSize: z.number(),
   totalPages: z.number(),
+});
+
+export const clinicalHistoryListItemBackendSchema = z.object({
+  id: z.string(),
+  patientId: z.string(),
+  doctorId: z.string(),
+  specialtyId: z.string(),
+  specialtyCode: z.number(),
+  appointmentId: z.string().nullable(),
+  consultationReason: z.string(),
+  patient: z.object({
+    id: z.string(),
+    patientNumber: z.number().optional(),
+    name: z.string(),
+    lastName: z.string(),
+  }),
+  doctor: z.object({
+    id: z.string(),
+    name: z.string(),
+    lastName: z.string(),
+    specialty: z.string().optional(),
+  }),
+  createdAt: z.union([z.string(), z.date()]),
+  updatedAt: z.union([z.string(), z.date()]),
 });
 
 const diagnosticBackendSchema = z.object({
@@ -108,6 +148,9 @@ export const clinicalHistoryBackendSchema = z.object({
 });
 
 type ClinicalHistoryBackend = z.infer<typeof clinicalHistoryBackendSchema>;
+type ClinicalHistoryListItemBackend = z.infer<
+  typeof clinicalHistoryListItemBackendSchema
+>;
 
 function formatDate(v: string | Date): string {
   return typeof v === "string" ? v : v.toISOString();
@@ -200,5 +243,24 @@ export function mapClinicalHistoryFromBackend(
     },
     createdAt: formatDate(b.createdAt),
     updatedAt: formatDate(b.updatedAt),
+  };
+}
+
+export function mapClinicalHistoryListItemFromBackend(
+  item: ClinicalHistoryListItemBackend,
+): ClinicalHistoryListItem {
+  return {
+    id: item.id,
+    patientId: item.patientId,
+    doctorId: item.doctorId,
+    specialtyId: item.specialtyId,
+    specialtyCode: item.specialtyCode,
+    appointmentId: item.appointmentId,
+    patientName: `${item.patient.name} ${item.patient.lastName}`.trim(),
+    doctorName: `${item.doctor.name} ${item.doctor.lastName}`.trim(),
+    doctorSpecialty: item.doctor.specialty,
+    reason: item.consultationReason,
+    createdAt: formatDate(item.createdAt),
+    updatedAt: formatDate(item.updatedAt),
   };
 }

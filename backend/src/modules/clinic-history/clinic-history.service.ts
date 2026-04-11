@@ -12,6 +12,7 @@ import { CreateClinicHistoryWithoutAppointmentDto } from './dto/create-clinic-hi
 import { FindAllClinicHistoriesQueryDto } from './dto/find-all-clinic-histories-query.dto';
 import {
   ClinicHistoryResponseDto,
+  ClinicHistoryListItemDto,
   DiagnosticResponseDto,
   PhysicalExamResponseDto,
   VitalSignResponseDto,
@@ -28,12 +29,56 @@ import {
 import { CreatePrescriptionMedicationDto } from './dto/create-prescription-medication.dto';
 
 export interface ClinicHistoryListResultDto {
-  items: ClinicHistoryResponseDto[];
+  items: ClinicHistoryListItemDto[];
   page: number;
   pageSize: number;
   total: number;
   totalPages: number;
 }
+
+const clinicHistoryListSelect = {
+  id: true,
+  patientId: true,
+  doctorId: true,
+  specialtyId: true,
+  appointmentId: true,
+  consultationReason: true,
+  createdAt: true,
+  updatedAt: true,
+  patient: {
+    select: {
+      id: true,
+      patientNumber: true,
+      user: {
+        select: {
+          name: true,
+          lastName: true,
+        },
+      },
+    },
+  },
+  doctor: {
+    select: {
+      id: true,
+      user: {
+        select: {
+          name: true,
+          lastName: true,
+        },
+      },
+      specialty: {
+        select: {
+          name: true,
+          specialtyCode: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.ClinicHistorySelect;
+
+type ClinicHistoryListRecord = Prisma.ClinicHistoryGetPayload<{
+  select: typeof clinicHistoryListSelect;
+}>;
 
 @Injectable()
 export class ClinicHistoryService {
@@ -362,28 +407,19 @@ export class ClinicHistoryService {
       doctorId,
     };
 
-    const [clinicHistories, total] = await this.prisma.$transaction([
+    const [clinicHistories, total] = await Promise.all([
       this.prisma.clinicHistory.findMany({
         where: whereWithDoctor,
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: {
-          patient: { include: { user: true } },
-          doctor: { include: { user: true, specialty: true } },
-          diagnostics: true,
-          physicalExams: true,
-          vitalSigns: true,
-          prescription: {
-            include: { prescriptionMedications: true },
-          },
-        },
+        select: clinicHistoryListSelect,
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.clinicHistory.count({ where: whereWithDoctor }),
     ]);
 
-    const items = clinicHistories.map((ch) =>
-      this.mapToClinicHistoryResponse(ch),
+    const items = clinicHistories.map((clinicHistory) =>
+      this.mapToClinicHistoryListItem(clinicHistory),
     );
     return {
       items,
@@ -648,6 +684,34 @@ export class ClinicHistoryService {
     }
 
     return { blockingErrors, warnings };
+  }
+
+  private mapToClinicHistoryListItem(
+    clinicHistory: ClinicHistoryListRecord,
+  ): ClinicHistoryListItemDto {
+    return {
+      id: clinicHistory.id,
+      patientId: clinicHistory.patientId,
+      doctorId: clinicHistory.doctorId,
+      specialtyId: clinicHistory.specialtyId,
+      specialtyCode: clinicHistory.doctor.specialty.specialtyCode,
+      appointmentId: clinicHistory.appointmentId ?? null,
+      consultationReason: clinicHistory.consultationReason,
+      patient: {
+        id: clinicHistory.patient.id,
+        patientNumber: clinicHistory.patient.patientNumber,
+        name: clinicHistory.patient.user.name,
+        lastName: clinicHistory.patient.user.lastName,
+      },
+      doctor: {
+        id: clinicHistory.doctor.id,
+        name: clinicHistory.doctor.user.name,
+        lastName: clinicHistory.doctor.user.lastName,
+        specialty: clinicHistory.doctor.specialty.name,
+      },
+      createdAt: clinicHistory.createdAt,
+      updatedAt: clinicHistory.updatedAt,
+    };
   }
 
   private mapToClinicHistoryResponse(clinicHistory: {

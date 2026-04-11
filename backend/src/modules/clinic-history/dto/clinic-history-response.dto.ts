@@ -239,6 +239,76 @@ export class ClinicHistoryDoctorDto {
   specialty: string;
 }
 
+export class ClinicHistoryListItemDto {
+  @ApiProperty({
+    description: 'ID único de la historia clínica',
+    example: '550e8400-e29b-41d4-a716-446655440015',
+  })
+  id: string;
+
+  @ApiProperty({
+    description: 'ID del paciente',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  patientId: string;
+
+  @ApiProperty({
+    description: 'ID del doctor',
+    example: '550e8400-e29b-41d4-a716-446655440001',
+  })
+  doctorId: string;
+
+  @ApiProperty({
+    description: 'ID de la especialidad',
+    example: '550e8400-e29b-41d4-a716-446655440002',
+  })
+  specialtyId: string;
+
+  @ApiProperty({
+    description: 'Código único de la especialidad',
+    example: 1,
+  })
+  specialtyCode: number;
+
+  @ApiProperty({
+    description: 'ID de la cita asociada; null cuando no existe',
+    example: '550e8400-e29b-41d4-a716-446655440003',
+    required: false,
+    nullable: true,
+  })
+  appointmentId?: string | null;
+
+  @ApiProperty({
+    description: 'Motivo de la consulta',
+    example: 'Dolor de cabeza persistente desde hace 3 días',
+  })
+  consultationReason: string;
+
+  @ApiProperty({
+    description: 'Información resumida del paciente',
+    type: ClinicHistoryPatientDto,
+  })
+  patient: ClinicHistoryPatientDto;
+
+  @ApiProperty({
+    description: 'Información resumida del doctor',
+    type: ClinicHistoryDoctorDto,
+  })
+  doctor: ClinicHistoryDoctorDto;
+
+  @ApiProperty({
+    description: 'Fecha de creación',
+    example: '2026-01-18T10:30:00.000Z',
+  })
+  createdAt: Date;
+
+  @ApiProperty({
+    description: 'Fecha de última actualización',
+    example: '2026-01-18T10:30:00.000Z',
+  })
+  updatedAt: Date;
+}
+
 export class ClinicHistoryResponseDto {
   @ApiProperty({
     description: 'ID único de la historia clínica',

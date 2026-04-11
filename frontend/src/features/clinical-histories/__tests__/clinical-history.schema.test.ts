@@ -5,6 +5,7 @@ import {
   vitalSignsFormSchema,
   clinicalHistoryFormSchema,
   clinicalHistoriesListResponseSchema,
+  clinicalHistoryListItemBackendSchema,
   clinicalHistoryBackendSchema,
 } from "../schemas/clinical-history.schema";
 
@@ -137,19 +138,14 @@ describe("clinicalHistoriesListResponseSchema", () => {
       {
         id: "1",
         patientId: "1",
+        doctorId: "doctor-1",
+        specialtyId: "specialty-1",
+        specialtyCode: 1,
+        appointmentId: "apt-1",
+        patientName: "Juan Pérez",
+        doctorName: "María González",
+        doctorSpecialty: "Cardiología",
         reason: "Dolor abdominal",
-        symptoms: "Dolor en zona epigástrica",
-        physicalExam: "Abdomen blando",
-        diagnosis: "Gastritis aguda",
-        treatment: "Omeprazol 20mg",
-        notes: "Control en 2 semanas",
-        vitalSigns: {
-          bloodPressure: "120/80",
-          heartRate: 72,
-          temperature: 36.5,
-          weight: 75,
-          height: 175,
-        },
         createdAt: "2024-01-20T10:00:00Z",
         updatedAt: "2024-01-20T10:00:00Z",
       },
@@ -174,6 +170,38 @@ describe("clinicalHistoriesListResponseSchema", () => {
     expect(parsed).toHaveProperty("pageSize", 10);
     expect(parsed).toHaveProperty("totalPages", 1);
     expect(Array.isArray(parsed.items)).toBe(true);
+  });
+});
+
+describe("clinicalHistoryListItemBackendSchema", () => {
+  const validBackendListItem = {
+    id: "ch-1",
+    patientId: "p-1",
+    doctorId: "d-1",
+    specialtyId: "s-1",
+    specialtyCode: 7,
+    appointmentId: null as string | null,
+    consultationReason: "Control",
+    patient: {
+      id: "p-1",
+      patientNumber: 12,
+      name: "Juan",
+      lastName: "Pérez",
+    },
+    doctor: {
+      id: "d-1",
+      name: "María",
+      lastName: "González",
+      specialty: "Cardiología",
+    },
+    createdAt: "2024-01-01T00:00:00Z",
+    updatedAt: "2024-01-01T00:00:00Z",
+  };
+
+  it("valida item backend resumido correctamente", () => {
+    expect(clinicalHistoryListItemBackendSchema.parse(validBackendListItem)).toEqual(
+      validBackendListItem,
+    );
   });
 });
 

@@ -5,7 +5,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { toDateLocale } from "@/lib/utils";
 import { DataTable, type Column } from "@/ui/organisms/DataTable";
-import type { ClinicalHistory } from "../types/clinical-history.types";
+import type { ClinicalHistoryListItem } from "../types/clinical-history.types";
 
 const MAX_TEXT_LENGTH = 50;
 
@@ -23,11 +23,11 @@ function formatDate(isoDate: string, locale: string): string {
 }
 
 type ClinicalHistoryTableProps = {
-  histories: ClinicalHistory[];
+  histories: ClinicalHistoryListItem[];
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
-  onView: (history: ClinicalHistory) => void;
+  onView: (history: ClinicalHistoryListItem) => void;
 };
 
 export function ClinicalHistoryTable({
@@ -40,7 +40,7 @@ export function ClinicalHistoryTable({
   const t = useTranslations();
   const dateLocale = toDateLocale(useLocale());
 
-  const columns: Column<ClinicalHistory & Record<string, unknown>>[] = [
+  const columns: Column<ClinicalHistoryListItem & Record<string, unknown>>[] = [
     {
       key: "patientName",
       headerKey: "patients.fullName",
@@ -57,9 +57,15 @@ export function ClinicalHistoryTable({
       render: (item) => truncate(item.reason, MAX_TEXT_LENGTH),
     },
     {
-      key: "diagnosis",
-      headerKey: "clinicalHistories.diagnosis",
-      render: (item) => truncate(item.diagnosis, MAX_TEXT_LENGTH),
+      key: "doctorName",
+      headerKey: "patients.attendedBy",
+      render: (item) =>
+        truncate(
+          item.doctorName && item.doctorSpecialty
+            ? `${item.doctorName} · ${item.doctorSpecialty}`
+            : (item.doctorName ?? "—"),
+          MAX_TEXT_LENGTH,
+        ),
     },
     {
       key: "actions",
@@ -84,7 +90,7 @@ export function ClinicalHistoryTable({
 
   return (
     <DataTable
-      data={histories as (ClinicalHistory & Record<string, unknown>)[]}
+      data={histories as (ClinicalHistoryListItem & Record<string, unknown>)[]}
       columns={columns}
       keyExtractor={(item) => item.id}
       page={page}

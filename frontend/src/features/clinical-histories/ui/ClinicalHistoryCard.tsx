@@ -4,10 +4,10 @@ import { FileText, Calendar } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 import { toDateLocale } from "@/lib/utils";
-import type { ClinicalHistory } from "../types/clinical-history.types";
+import type { ClinicalHistoryListItem } from "../types/clinical-history.types";
 
 type ClinicalHistoryCardProps = {
-  history: ClinicalHistory;
+  history: ClinicalHistoryListItem;
   onClick?: () => void;
 };
 
@@ -17,6 +17,10 @@ export function ClinicalHistoryCard({
 }: ClinicalHistoryCardProps) {
   const t = useTranslations();
   const dateLocale = toDateLocale(useLocale());
+  const doctorLabel =
+    history.doctorName && history.doctorSpecialty
+      ? `${history.doctorName} · ${history.doctorSpecialty}`
+      : (history.doctorName ?? "—");
 
   return (
     <Card
@@ -53,7 +57,7 @@ export function ClinicalHistoryCard({
               </div>
             </div>
             <p className="text-sm font-medium text-primary">
-              {t("clinicalHistories.diagnosis")}: {history.diagnosis}
+              {t("patients.attendedBy")}: {doctorLabel}
             </p>
             <p className="line-clamp-2 text-sm text-muted-foreground">
               {history.reason}
