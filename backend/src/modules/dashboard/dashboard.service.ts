@@ -36,19 +36,29 @@ export class DashboardService {
   }
 
   private async patientsCount(doctorId: string): Promise<number> {
-    // Use SQL-level COUNT(DISTINCT ...) to count unique patients across three sources
-    // without loading all records into memory
-    const result = await this.prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(DISTINCT patient_id) as count
-      FROM (
-        SELECT patient_id FROM appointments WHERE doctor_id = ${doctorId}
-        UNION
-        SELECT patient_id FROM clinic_histories WHERE doctor_id = ${doctorId}
-        UNION
-        SELECT id as patient_id FROM patients WHERE registered_by_doctor_id = ${doctorId}
-      ) as all_patients
-    `;
-    return Number(result[0]?.count ?? 0);
+    const [appointments, clinicHistories, registeredPatients] =
+      await Promise.all([
+        this.prisma.appointment.findMany({
+          where: { doctorId },
+          select: { patientId: true },
+        }),
+        this.prisma.clinicHistory.findMany({
+          where: { doctorId },
+          select: { patientId: true },
+        }),
+        this.prisma.patient.findMany({
+          where: { registeredByDoctorId: doctorId },
+          select: { id: true },
+        }),
+      ]);
+
+    const uniquePatientIds = new Set<string>([
+      ...appointments.map((appointment) => appointment.patientId),
+      ...clinicHistories.map((history) => history.patientId),
+      ...registeredPatients.map((patient) => patient.id),
+    ]);
+
+    return uniquePatientIds.size;
   }
 
   private getWeekBoundsUTC(): { start: Date; end: Date } {

@@ -62,30 +62,52 @@ export class AuditService {
   constructor(private readonly prisma: PrismaService) {}
 
   async log(entry: AuditLogEntry): Promise<AuditLogResultDto> {
-    const auditLog = await this.prisma.auditLog.create({
-      data: {
-        userId: entry.userId,
-        action: entry.action,
-        entityType: entry.entityType,
-        entityId: entry.entityId,
-        previousState: entry.previousState ?? undefined,
-        newState: entry.newState ?? undefined,
-        result: entry.result,
-        errorMessage: entry.errorMessage,
-        ipAddress: entry.ipAddress,
-        userAgent: entry.userAgent,
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-            lastName: true,
+    try {
+      const auditLog = await this.prisma.auditLog.create({
+        data: {
+          userId: entry.userId,
+          action: entry.action,
+          entityType: entry.entityType,
+          entityId: entry.entityId,
+          previousState: entry.previousState ?? undefined,
+          newState: entry.newState ?? undefined,
+          result: entry.result,
+          errorMessage: entry.errorMessage,
+          ipAddress: entry.ipAddress,
+          userAgent: entry.userAgent,
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              lastName: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    return this.mapToDto(auditLog as unknown as AuditLogWithUser);
+      return this.mapToDto(auditLog as unknown as AuditLogWithUser);
+    } catch (error) {
+      if (!this.isMissingAuditLogTableError(error)) {
+        throw error;
+      }
+
+      return {
+        id: 'audit-log-disabled',
+        userId: entry.userId,
+        userName: 'Sistema',
+        action: entry.action,
+        entityType: entry.entityType,
+        entityId: entry.entityId ?? null,
+        previousState: (entry.previousState as Record<string, unknown>) ?? null,
+        newState: (entry.newState as Record<string, unknown>) ?? null,
+        result: entry.result,
+        errorMessage: entry.errorMessage ?? null,
+        ipAddress: entry.ipAddress ?? null,
+        userAgent: entry.userAgent ?? null,
+        createdAt: new Date(),
+      };
+    }
   }
 
   async findAll(
@@ -123,23 +145,32 @@ export class AuditService {
       where.createdAt = createdAt;
     }
 
-    const [items, total] = await Promise.all([
-      this.prisma.auditLog.findMany({
-        where,
-        include: {
-          user: {
-            select: {
-              name: true,
-              lastName: true,
+    let items: unknown[] = [];
+    let total = 0;
+
+    try {
+      [items, total] = await Promise.all([
+        this.prisma.auditLog.findMany({
+          where,
+          include: {
+            user: {
+              select: {
+                name: true,
+                lastName: true,
+              },
             },
           },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      this.prisma.auditLog.count({ where }),
-    ]);
+          orderBy: { createdAt: 'desc' },
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+        this.prisma.auditLog.count({ where }),
+      ]);
+    } catch (error) {
+      if (!this.isMissingAuditLogTableError(error)) {
+        throw error;
+      }
+    }
 
     return {
       items: items.map((item) =>
@@ -153,23 +184,42 @@ export class AuditService {
   }
 
   async findOne(id: string): Promise<AuditLogResultDto> {
-    const auditLog = await this.prisma.auditLog.findUnique({
-      where: { id },
-      include: {
-        user: {
-          select: {
-            name: true,
-            lastName: true,
+    let auditLog: unknown = null;
+
+    try {
+      auditLog = await this.prisma.auditLog.findUnique({
+        where: { id },
+        include: {
+          user: {
+            select: {
+              name: true,
+              lastName: true,
+            },
           },
         },
-      },
-    });
+      });
+    } catch (error) {
+      if (!this.isMissingAuditLogTableError(error)) {
+        throw error;
+      }
+    }
 
     if (!auditLog) {
       throw new NotFoundException('audit-log-not-found');
     }
 
     return this.mapToDto(auditLog as unknown as AuditLogWithUser);
+  }
+
+  private isMissingAuditLogTableError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const prismaCode = (error as { code?: string }).code;
+    const prismaMeta = (error as { meta?: { table?: string } }).meta;
+
+    return prismaCode === 'P2021' && !!prismaMeta?.table?.includes('AuditLog');
   }
 
   private mapToDto(auditLog: AuditLogWithUser): AuditLogResultDto {

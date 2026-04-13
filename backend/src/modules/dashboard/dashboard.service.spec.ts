@@ -42,7 +42,6 @@ describe('DashboardService', () => {
     prisma.patient.findMany.mockResolvedValue([]);
     prisma.appointment.count.mockResolvedValue(3);
     prisma.clinicHistory.count.mockResolvedValue(10);
-    prisma.$queryRaw.mockResolvedValue([{ count: BigInt(3) }]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -84,8 +83,20 @@ describe('DashboardService', () => {
           where: expect.objectContaining({ doctorId }),
         }),
       );
+      expect(prisma.appointment.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { doctorId },
+          select: { patientId: true },
+        }),
+      );
       expect(prisma.clinicHistory.count).toHaveBeenCalledWith(
         expect.objectContaining({ where: { doctorId } }),
+      );
+      expect(prisma.patient.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { registeredByDoctorId: doctorId },
+          select: { id: true },
+        }),
       );
       expect(prisma.clinicHistory.findMany).toHaveBeenCalledWith(
         expect.objectContaining({

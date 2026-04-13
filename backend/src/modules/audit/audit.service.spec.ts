@@ -132,6 +132,19 @@ describe('AuditService', () => {
       expect(result.result).toBe('FAILURE');
       expect(result.errorMessage).toBe('Duplicate license number');
     });
+
+    it('debe degradar gracefully si la tabla AuditLog no existe', async () => {
+      prisma.auditLog.create.mockRejectedValue({
+        code: 'P2021',
+        meta: { table: 'public.AuditLog' },
+      });
+
+      const result = await service.log(entry);
+
+      expect(result.id).toBe('audit-log-disabled');
+      expect(result.action).toBe(entry.action);
+      expect(result.userId).toBe(entry.userId);
+    });
   });
 
   describe('findAll()', () => {
@@ -205,6 +218,19 @@ describe('AuditService', () => {
           take: 10,
         }),
       );
+    });
+
+    it('debe retornar lista vacía si la tabla AuditLog no existe', async () => {
+      prisma.auditLog.findMany.mockRejectedValue({
+        code: 'P2021',
+        meta: { table: 'public.AuditLog' },
+      });
+
+      const result = await service.findAll({ page: 1, pageSize: 20 });
+
+      expect(result.items).toEqual([]);
+      expect(result.total).toBe(0);
+      expect(result.totalPages).toBe(0);
     });
   });
 

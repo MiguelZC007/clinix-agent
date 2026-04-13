@@ -257,6 +257,7 @@ async function ensureSeedUser({
         phone,
         password,
         role,
+        isActive: true,
       },
     });
   }
@@ -275,6 +276,7 @@ async function ensureSeedUser({
         phone,
         password,
         role,
+        isActive: true,
       },
     });
   }
@@ -287,6 +289,7 @@ async function ensureSeedUser({
       phone,
       password,
       role,
+      isActive: true,
     },
   });
 }
