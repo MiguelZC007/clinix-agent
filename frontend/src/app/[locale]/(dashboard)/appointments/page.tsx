@@ -115,7 +115,7 @@ export default function AppointmentsPage() {
         title={t("appointments.title")}
         description={t("appointments.description")}
         actions={
-          <Button onClick={() => router.push("/appointments/new")}>
+          <Button data-testid="btn-new-appointment" onClick={() => router.push("/appointments/new")}>
             <Plus className="mr-2 h-4 w-4" />
             {t("appointments.newAppointment")}
           </Button>

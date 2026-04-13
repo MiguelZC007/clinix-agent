@@ -13,22 +13,21 @@ export class DoctorsPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.table = page.locator('[data-testid="doctors-table"], table, [data-testid="doctors-list"]').first();
-    this.newDoctorBtn = page.locator('[data-testid="btn-new-doctor"], button:has-text("Nuevo"), a:has-text("Nuevo")').first();
+    this.table = page.locator('main table').first();
+    this.newDoctorBtn = page.getByTestId('btn-new-doctor');
     this.searchInput = page.locator('[data-testid="input-search"], input[placeholder*="buscar"], input[placeholder*="search"]').first();
-    // Radix Select is a button with role="combobox", not a <select> element
-    this.statusFilter = page.locator('[data-testid="select-status"], button[role="combobox"]').first();
-    this.specialtyFilter = page.locator('[data-testid="select-specialty"], button[role="combobox"]').nth(1);
+    this.statusFilter = page.getByTestId('select-status');
+    this.specialtyFilter = page.getByTestId('select-specialty-filter');
     // Note: There's no clear filters button in DoctorFilters component
     // Filters are cleared by selecting "all" option
     this.pagination = page.locator('[data-testid="pagination"], nav[aria-label*="pagin"]').first();
-    this.rows = this.table.locator('tbody tr, [data-testid="doctor-row"]');
+    // Use only interactive doctor rows to avoid clicking loading/skeleton rows.
+    this.rows = this.page.locator('main tbody tr[role="button"]');
   }
 
   async goto() {
     await this.page.goto('/es/admin/doctors');
-    await this.page.waitForLoadState('networkidle');
-    await this.table.waitFor({ state: 'visible', timeout: 10000 });
+    await expect(this.page.getByRole('heading', { name: /Doctores/i })).toBeVisible({ timeout: 15000 });
   }
 
   async getDoctorRowByEmail(email: string) {
@@ -41,13 +40,27 @@ export class DoctorsPage {
 
   async clickNewDoctor() {
     await this.newDoctorBtn.click();
-    await this.page.waitForLoadState('networkidle');
+  }
+
+  private async runAndWaitForDoctorsRequest(action: () => Promise<void>) {
+    const doctorsResponse = this.page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        response.url().includes('/v1/admin/doctors'),
+      { timeout: 10000 },
+    ).catch(() => null);
+
+    await action();
+    await doctorsResponse;
+    await expect(this.page.getByRole('heading', { name: /Doctores/i })).toBeVisible({ timeout: 15000 });
+    await expect(this.page.locator('main')).toBeVisible({ timeout: 15000 });
   }
 
   async searchDoctor(query: string) {
-    await this.searchInput.fill(query);
-    await this.page.keyboard.press('Enter');
-    await this.page.waitForLoadState('networkidle');
+    await this.runAndWaitForDoctorsRequest(async () => {
+      await this.searchInput.fill(query);
+      await this.page.keyboard.press('Enter');
+    });
   }
 
   /**
@@ -59,15 +72,29 @@ export class DoctorsPage {
     await triggerLocator.click();
     
     // Wait for the dropdown to appear and select the option
-    const option = this.page.locator('[role="option"], [data-radix-select-viewport] > div, [cmdk-item]').filter({ hasText: optionText }).first();
+    const option = this.page.locator('[role="option"], [data-radix-select-item], [data-radix-select-viewport] > div, [cmdk-item]').filter({ hasText: optionText }).first();
     await option.waitFor({ state: 'visible', timeout: 5000 });
     await option.click();
     
-    // Wait for the dropdown to close and any network requests to complete
-    await this.page.waitForLoadState('networkidle');
+    await expect(option).toBeHidden({ timeout: 5000 });
   }
 
-  async filterByStatus(status: string) {
+  async filterByStatus(status: 'active' | 'inactive' | 'all' | string) {
+    if (status === 'active') {
+      await this.selectRadixOption(this.statusFilter, 'Activo');
+      return;
+    }
+
+    if (status === 'inactive') {
+      await this.selectRadixOption(this.statusFilter, 'Inactivo');
+      return;
+    }
+
+    if (status === 'all') {
+      await this.selectRadixOption(this.statusFilter, 'Todos');
+      return;
+    }
+
     await this.selectRadixOption(this.statusFilter, status);
   }
 
@@ -77,15 +104,16 @@ export class DoctorsPage {
 
   async clearFilters() {
     // Select "all" option to clear status filter
-    await this.selectRadixOption(this.statusFilter, 'Todos');
+    await this.filterByStatus('all');
     // Clear search input
-    await this.searchInput.fill('');
-    await this.page.keyboard.press('Enter');
-    await this.page.waitForLoadState('networkidle');
+    await this.runAndWaitForDoctorsRequest(async () => {
+      await this.searchInput.fill('');
+      await this.page.keyboard.press('Enter');
+    });
   }
 
   async getRowCount() {
-    return await this.rows.count();
+    return await this.rows.count().catch(() => 0);
   }
 
   async clickEditDoctor(email: string) {
@@ -94,7 +122,7 @@ export class DoctorsPage {
     await row.locator('[data-testid="btn-actions"]').first().click();
     // Then click edit
     await row.locator('[data-testid="btn-edit"]').first().click();
-    await this.page.waitForLoadState('networkidle');
+    await expect(this.page).toHaveURL(/\/es\/admin\/doctors\/[^/]+\/edit$/, { timeout: 15000 });
   }
 
   async clickViewDoctor(email: string) {
@@ -103,16 +131,17 @@ export class DoctorsPage {
     await row.locator('[data-testid="btn-actions"]').first().click();
     // Then click view
     await row.locator('[data-testid="btn-view"]').first().click();
-    await this.page.waitForLoadState('networkidle');
+    await expect(this.page).toHaveURL(/\/es\/admin\/doctors\/[^/]+$/, { timeout: 15000 });
   }
 
   async clickDeactivateDoctor(email: string) {
     const row = await this.getDoctorRowByEmail(email);
     // Open actions dropdown first
     await row.locator('[data-testid="btn-actions"]').first().click();
-    // Then click deactivate
-    await row.locator('[data-testid="btn-deactivate"]').first().click();
-    await this.page.waitForLoadState('networkidle');
+    await this.runAndWaitForDoctorsRequest(async () => {
+      // Then click deactivate
+      await row.locator('[data-testid="btn-deactivate"]').first().click();
+    });
   }
 
   async clickFirstRowView() {
@@ -120,8 +149,8 @@ export class DoctorsPage {
     // Open actions dropdown first
     await firstRow.locator('[data-testid="btn-actions"]').first().click();
     // Wait for dropdown to open and click view (dropdown is in a portal, not inside row)
-    await this.page.locator('[data-testid="btn-view"]').first().click();
-    await this.page.waitForLoadState('networkidle');
+    await this.page.locator('[data-testid="btn-view"]:visible').first().click();
+    await expect(this.page).toHaveURL(/\/es\/admin\/doctors\/[^/]+$/, { timeout: 15000 });
   }
 
   async clickFirstRowEdit() {
@@ -129,8 +158,14 @@ export class DoctorsPage {
     // Open actions dropdown first
     await firstRow.locator('[data-testid="btn-actions"]').first().click();
     // Wait for dropdown to open and click edit (dropdown is in a portal, not inside row)
-    await this.page.locator('[data-testid="btn-edit"]').first().click();
-    await this.page.waitForLoadState('networkidle');
+    await this.page.locator('[data-testid="btn-edit"]:visible').first().click();
+    await expect(this.page).toHaveURL(/\/es\/admin\/doctors\/[^/]+\/edit$/, { timeout: 15000 });
+  }
+
+  async clickFirstRow() {
+    const firstRow = this.rows.first();
+    await expect(firstRow).toBeVisible({ timeout: 10000 });
+    await firstRow.click();
   }
 
   async expectDoctorInTable(email: string) {

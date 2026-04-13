@@ -11,25 +11,28 @@ export class LoginPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.phoneInput = page.locator('[data-testid="input-phone"], input[type="tel"], input[name="phone"]').first();
-    this.passwordInput = page.locator('[data-testid="input-password"], input[type="password"], input[name="password"]').first();
-    this.submitBtn = page.locator('[data-testid="btn-login"], button[type="submit"]').first();
-    this.forgotPasswordLink = page.locator('[data-testid="link-forgot-password"], a:has-text("olvid")').first();
+    this.phoneInput = page.getByTestId('input-phone');
+    this.passwordInput = page.getByTestId('input-password');
+    this.submitBtn = page.getByTestId('btn-login');
+    this.forgotPasswordLink = page.getByTestId('link-forgot-password');
     this.errorMessage = page.locator('[data-testid="error-message"], .error, [role="alert"]').first();
   }
 
   async goto() {
-    await this.page.goto('/es/login');
-    await this.page.waitForLoadState('networkidle');
+    await this.page.goto('/es/login', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await expect(this.phoneInput).toBeVisible({ timeout: 15000 });
+    await expect(this.passwordInput).toBeVisible({ timeout: 15000 });
   }
 
   async login(phone: string, password: string) {
     await this.phoneInput.fill(phone);
     await this.passwordInput.fill(password);
+    await expect(this.submitBtn).toBeEnabled({ timeout: 10000 });
     await this.submitBtn.click();
   }
 
   async clickForgotPassword() {
+    await expect(this.forgotPasswordLink).toBeVisible({ timeout: 10000 });
     await this.forgotPasswordLink.click();
   }
 

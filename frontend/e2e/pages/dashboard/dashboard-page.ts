@@ -1,4 +1,4 @@
-import { Page, Locator } from '@playwright/test';
+import { Page, Locator, expect } from '@playwright/test';
 
 export class DashboardPage {
   readonly page: Page;
@@ -22,16 +22,15 @@ export class DashboardPage {
   }
 
   async goto() {
-    await this.page.goto('/es/dashboard');
-    await this.page.waitForLoadState('networkidle');
+    await this.page.goto('/es/dashboard', { waitUntil: 'domcontentloaded' });
+    await this.page.locator('main').first().waitFor({ state: 'visible', timeout: 20000 });
     
     // Wait for loading to finish (spinner disappears)
     await this.loadingSpinner.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {
       // Loading spinner might not be present if data loads fast
     });
-    
-    // Wait a bit for content to render
-    await this.page.waitForTimeout(1000);
+
+    await expect(this.page.locator('h1, h2, p.text-lg, .grid.gap-4').first()).toBeVisible({ timeout: 15000 });
   }
 
   async expectWelcomeMessage(message: string) {

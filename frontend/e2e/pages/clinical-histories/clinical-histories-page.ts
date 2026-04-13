@@ -15,11 +15,11 @@ export class ClinicalHistoriesPage {
   constructor(page: Page) {
     this.page = page;
     // Table container
-    this.table = page.locator('[data-testid="clinical-histories-table"], table, [data-testid="clinical-history-card"]').first();
+    this.table = page.locator('main table, main [data-testid="clinical-history-card"]').first();
     // New history button
     this.newHistoryBtn = page.locator('[data-testid="btn-new-history"], button:has-text("Nueva"), button:has-text("New")').first();
     // Search input (SearchInput component with data-testid="input-search")
-    this.searchInput = page.locator('[data-testid="input-search"], input[placeholder*="buscar"], input[placeholder*="search"]').first();
+    this.searchInput = page.locator('main [data-testid="input-search"], main input[placeholder*="buscar" i], main input[placeholder*="search" i]').first();
     // Date range filters
     this.dateFromInput = page.locator('[data-testid="date-from"], input[type="date"], input:has-text("desde")').first();
     this.dateToInput = page.locator('[data-testid="date-to"], input[type="date"], input:has-text("hasta")').first();
@@ -28,13 +28,12 @@ export class ClinicalHistoriesPage {
     // Pagination
     this.pagination = page.locator('[data-testid="pagination"], nav[aria-label*="pagin"]').first();
     // Table rows
-    this.rows = page.locator('table tbody tr, [data-testid="clinical-history-row"]');
+    this.rows = page.locator('main table tbody tr, main [data-testid="clinical-history-row"]');
   }
 
   async goto() {
-    await this.page.goto('/es/clinical-histories');
-    await this.page.waitForLoadState('networkidle');
-    await this.page.waitForTimeout(2000);
+    await this.page.goto('/es/clinical-histories', { waitUntil: 'domcontentloaded' });
+    await expect(this.page.locator('[data-testid="clinical-history-filters"]')).toBeVisible({ timeout: 15000 });
   }
 
   async getHistoryRowById(id: string) {
@@ -43,13 +42,13 @@ export class ClinicalHistoriesPage {
 
   async clickNewHistory() {
     await this.newHistoryBtn.click();
-    await this.page.waitForLoadState('networkidle');
+    await expect(this.page).toHaveURL(/\/clinical-histories\/new/, { timeout: 15000 });
   }
 
   async searchHistory(query: string) {
     await this.searchInput.fill(query);
     await this.page.keyboard.press('Enter');
-    await this.page.waitForLoadState('networkidle');
+    await expect(this.searchInput).toHaveValue(query, { timeout: 5000 });
   }
 
   async filterByDateFrom(date: string) {
@@ -59,7 +58,7 @@ export class ClinicalHistoriesPage {
     const visible = await dateInput.isVisible().catch(() => false);
     if (visible) {
       await dateInput.fill(date);
-      await this.page.waitForLoadState('networkidle');
+      await expect(dateInput).toHaveValue(date, { timeout: 5000 });
     }
   }
 
@@ -68,15 +67,15 @@ export class ClinicalHistoriesPage {
     const visible = await dateInput.isVisible().catch(() => false);
     if (visible) {
       await dateInput.fill(date);
-      await this.page.waitForLoadState('networkidle');
+      await expect(dateInput).toHaveValue(date, { timeout: 5000 });
     }
   }
 
   async clearFilters() {
     const visible = await this.clearFiltersBtn.isVisible().catch(() => false);
     if (visible) {
-      await this.clearFiltersBtn.click();
-      await this.page.waitForLoadState('networkidle');
+      await this.clearFiltersBtn.click({ timeout: 5000 });
+      await expect(this.searchInput).toHaveValue('', { timeout: 5000 });
     }
   }
 
@@ -91,7 +90,7 @@ export class ClinicalHistoriesPage {
     const visible = await viewBtn.isVisible().catch(() => false);
     if (visible) {
       await viewBtn.click();
-      await this.page.waitForLoadState('networkidle');
+      await expect(this.page).toHaveURL(/\/clinical-histories\//, { timeout: 15000 });
     }
   }
 

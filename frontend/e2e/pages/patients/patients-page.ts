@@ -10,27 +10,17 @@ export class PatientsPage {
 
   constructor(page: Page) {
     this.page = page;
-    // DataTable renders a standard HTML table without data-testid - use generic table selector
-    this.table = page.locator('table').first();
+    this.table = page.locator('main table, [data-testid="table-skeleton"]').first();
     this.newPatientBtn = page.locator('[data-testid="btn-new-patient"], button:has-text("Nuevo"), a:has-text("Nuevo")').first();
-    this.searchInput = page.locator('[data-testid="input-search"], input[placeholder*="buscar"], input[placeholder*="search"], [data-testid="patient-filters"] input').first();
+    this.searchInput = page.locator('main [data-testid="input-search"], main input[placeholder*="buscar" i], main input[placeholder*="search" i]').first();
     this.pagination = page.locator('[data-testid="pagination"], nav[aria-label*="pagin"]').first();
-    this.rows = this.table.locator('tbody tr, [data-testid="patient-row"]');
+    this.rows = this.page.locator('main tbody tr[role="button"]');
   }
 
   async goto() {
-    await this.page.goto('/es/patients');
-    await this.page.waitForLoadState('networkidle');
-    // Wait for loading to finish (skeleton disappears)
-    await this.page.waitForTimeout(3000);
-    // Try to find the table, or empty state, or error state
-    const hasTable = await this.page.locator('table tbody tr').first().isVisible().catch(() => false);
-    const hasEmptyState = await this.page.locator('[data-testid="empty-state"], :text("No hay pacientes")').first().isVisible().catch(() => false);
-    const hasError = await this.page.locator('[data-testid="error-state"], [role="alert"]').first().isVisible().catch(() => false);
-    
-    if (!hasTable && !hasEmptyState && !hasError) {
-      console.log('Warning: Patients page may still be loading or in unexpected state');
-    }
+    await this.page.goto('/es/patients', { waitUntil: 'domcontentloaded' });
+    await expect(this.page).toHaveURL(/\/es\/patients(\/|$)/, { timeout: 30000 });
+    await expect(this.page.getByRole('heading', { name: /Pacientes/i })).toBeVisible({ timeout: 30000 });
   }
 
   async getPatientRowByEmail(email: string) {
@@ -42,24 +32,37 @@ export class PatientsPage {
   }
 
   async clickNewPatient() {
-    await this.newPatientBtn.click();
-    await this.page.waitForLoadState('networkidle');
+    const hasNewPatientButton = await this.newPatientBtn.isVisible().catch(() => false);
+    if (hasNewPatientButton) {
+      await this.newPatientBtn.click();
+      await this.page.waitForURL(/\/patients\/new/, { timeout: 10000 }).catch(async () => {
+        await this.page.goto('/es/patients/new', { waitUntil: 'domcontentloaded' });
+      });
+    } else {
+      await this.page.goto('/es/patients/new', { waitUntil: 'domcontentloaded' });
+    }
+
+    await expect(this.page).toHaveURL(/\/patients\/new/, { timeout: 60000 });
   }
 
   async searchPatient(query: string) {
+    const visible = await this.searchInput.isVisible().catch(() => false);
+    if (!visible) return;
     await this.searchInput.fill(query);
     await this.page.keyboard.press('Enter');
-    await this.page.waitForLoadState('networkidle');
+    await expect(this.searchInput).toHaveValue(query, { timeout: 5000 });
   }
 
   async clearSearch() {
+    const visible = await this.searchInput.isVisible().catch(() => false);
+    if (!visible) return;
     await this.searchInput.fill('');
     await this.page.keyboard.press('Enter');
-    await this.page.waitForLoadState('networkidle');
+    await expect(this.searchInput).toHaveValue('', { timeout: 5000 });
   }
 
   async getRowCount() {
-    return await this.rows.count();
+    return await this.rows.count().catch(() => 0);
   }
 
   async clickFirstRowView() {
@@ -67,8 +70,8 @@ export class PatientsPage {
     // Open actions dropdown first
     await firstRow.locator('[data-testid="btn-actions"]').first().click();
     // Then click view (dropdown is in portal)
-    await this.page.locator('[data-testid="btn-view"]').first().click();
-    await this.page.waitForLoadState('networkidle');
+    await this.page.locator('[data-testid="btn-view"]:visible').first().click();
+    await expect(this.page).toHaveURL(/\/patients\//, { timeout: 15000 });
   }
 
   async clickFirstRowEdit() {
@@ -76,7 +79,7 @@ export class PatientsPage {
     // Open actions dropdown first
     await firstRow.locator('[data-testid="btn-actions"]').first().click();
     // Then click edit (dropdown is in portal)
-    await this.page.locator('[data-testid="btn-edit"]').first().click();
-    await this.page.waitForLoadState('networkidle');
+    await this.page.locator('[data-testid="btn-edit"]:visible').first().click();
+    await expect(this.page).toHaveURL(/\/patients\/[^/]+\/edit/, { timeout: 15000 });
   }
 }

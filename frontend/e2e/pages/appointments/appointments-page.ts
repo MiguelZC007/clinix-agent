@@ -12,56 +12,72 @@ export class AppointmentsPage {
     // Calendar component
     this.calendar = page.locator('[data-testid="appointment-calendar"], [data-testid="calendar"], [data-testid="calendar-container"]').first();
     // New appointment button
-    this.newAppointmentBtn = page.locator('[data-testid="btn-new-appointment"], button:has-text("Nueva"), button:has-text("New")').first();
+    this.newAppointmentBtn = page.locator('[data-testid="btn-new-appointment"], button:has-text("Nueva cita"), button:has-text("New appointment")').first();
     // Status filter buttons (not a select - uses Button components with aria-pressed)
     this.statusFilterButtons = page.locator('button[aria-pressed]').first();
   }
 
   async goto() {
-    await this.page.goto('/es/appointments');
-    await this.page.waitForLoadState('networkidle');
-    // Wait for calendar or loading state
-    await this.page.waitForTimeout(2000);
+    await this.page.goto('/es/appointments', { waitUntil: 'domcontentloaded' });
+    await this.page.waitForLoadState('domcontentloaded');
+    await this.page.locator('main, [role="alert"]').first().waitFor({ state: 'visible', timeout: 30000 });
   }
 
   async clickNewAppointment() {
     await this.newAppointmentBtn.click();
-    await this.page.waitForLoadState('networkidle');
+    await expect(this.page).toHaveURL(/\/appointments(\/new)?/, { timeout: 15000 });
   }
 
   async filterByStatus(status: 'scheduled' | 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'all') {
-    // Status filter uses Button components with aria-pressed
-    // Labels are translated, so we look for the button that's not aria-pressed="true"
     const statusLabels: Record<string, string[]> = {
-      scheduled: ['scheduled', 'programada', 'cita programada'],
+      scheduled: ['Programada', 'Scheduled'],
       pending: ['pending', 'pendiente'],
-      confirmed: ['confirmed', 'confirmada'],
-      completed: ['completed', 'completada', 'finalizada'],
-      cancelled: ['cancelled', 'cancelada'],
-      all: ['all', 'todas', 'todos']
+      confirmed: ['confirmed', 'confirmada', 'Confirmada'],
+      completed: ['completed', 'completada', 'finalizada', 'Completada'],
+      cancelled: ['cancelled', 'cancelada', 'Cancelada'],
+      all: ['all', 'todas', 'todos', 'Todas']
     };
     
     const labels = statusLabels[status] || [status];
     for (const label of labels) {
-      const btn = this.page.locator(`button:has-text("${label}"), button[aria-pressed]`).filter({ hasText: label }).first();
+      const btn = this.page
+        .locator('div[role="group"][aria-label] button[aria-pressed]')
+        .filter({ hasText: label })
+        .first();
       const visible = await btn.isVisible().catch(() => false);
       if (visible) {
+        const responsePromise = this.page.waitForResponse(
+          (response) =>
+            response.request().method() === 'GET' &&
+            response.url().includes('/v1/appointments'),
+          { timeout: 10000 },
+        ).catch(() => null);
         await btn.click();
-        await this.page.waitForLoadState('networkidle');
+        await responsePromise;
+        await expect(btn).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 });
+        await expect(this.calendar.or(this.page.locator('main'))).toBeVisible({ timeout: 10000 });
         return;
       }
     }
-    // Fallback: click the status filter button area and try to find the option
-    await this.page.waitForTimeout(500);
+    return;
   }
 
   async switchToView(view: 'day' | 'week' | 'month') {
-    // Look for view toggle buttons
-    const viewBtn = this.page.locator(`button:has-text("${view}"), [role="tab"]:has-text("${view}")`).first();
+    const labels: Record<'day' | 'week' | 'month', string[]> = {
+      day: ['Día', 'Day'],
+      week: ['Semana', 'Week'],
+      month: ['Mes', 'Month'],
+    };
+
+    const viewBtn = this.page
+      .locator('div[role="group"][aria-label] button[aria-pressed]')
+      .filter({ hasText: new RegExp(labels[view].join('|'), 'i') })
+      .first();
     const visible = await viewBtn.isVisible().catch(() => false);
     if (visible) {
       await viewBtn.click();
-      await this.page.waitForLoadState('networkidle');
+      await expect(viewBtn).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 });
+      await expect(this.calendar.or(this.page.locator('main'))).toBeVisible({ timeout: 10000 });
     }
   }
 

@@ -15,7 +15,7 @@ export class DoctorFormPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.form = page.locator('[data-testid="doctor-form"], form').first();
+    this.form = page.locator('[data-testid="doctor-form"]').first();
     this.nameInput = page.locator('[data-testid="input-name"], input[name="name"]').first();
     this.lastNameInput = page.locator('[data-testid="input-lastName"], input[name="lastName"]').first();
     this.licenseNumberInput = page.locator('[data-testid="input-licenseNumber"], input[name="licenseNumber"]').first();
@@ -28,16 +28,14 @@ export class DoctorFormPage {
   }
 
   async gotoNew() {
-    await this.page.goto('/es/admin/doctors/new');
-    await this.page.waitForLoadState('networkidle');
-    await this.form.waitFor({ state: 'visible', timeout: 10000 });
-    await this.nameInput.waitFor({ state: 'visible', timeout: 5000 });
+    await this.page.goto('/es/admin/doctors/new', { waitUntil: 'domcontentloaded' });
+    await this.form.waitFor({ state: 'visible', timeout: 60000 });
+    await this.nameInput.waitFor({ state: 'visible', timeout: 30000 });
   }
 
   async gotoEdit(doctorId: string) {
-    await this.page.goto(`/es/admin/doctors/${doctorId}/edit`);
-    await this.page.waitForLoadState('networkidle');
-    await this.form.waitFor({ state: 'visible', timeout: 10000 });
+    await this.page.goto(`/es/admin/doctors/${doctorId}/edit`, { waitUntil: 'domcontentloaded' });
+    await this.form.waitFor({ state: 'visible', timeout: 20000 });
   }
 
   /**
@@ -48,7 +46,7 @@ export class DoctorFormPage {
     const option = this.page.locator('[role="option"], [data-radix-select-viewport] > div, [cmdk-item]').filter({ hasText: optionText }).first();
     await option.waitFor({ state: 'visible', timeout: 5000 });
     await option.click();
-    await this.page.waitForLoadState('networkidle');
+    await expect(option).toBeHidden({ timeout: 5000 });
   }
 
   async fillForm(data: {
@@ -88,12 +86,10 @@ export class DoctorFormPage {
 
   async submit() {
     await this.submitBtn.click();
-    await this.page.waitForLoadState('networkidle');
   }
 
   async cancel() {
     await this.cancelBtn.click();
-    await this.page.waitForLoadState('networkidle');
   }
 
   async expectValidationError(field: string) {

@@ -2,10 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Smoke Tests - Critical Paths', () => {
   test('should load home page', async ({ page }) => {
-    await page.goto('/');
-    
-    // Should redirect to login or show content
-    await page.waitForLoadState('networkidle');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     
     // Wait for redirect to complete (middleware redirects to /es/login)
     await page.waitForURL(/\/(login|es\/login|patients|dashboard)/, { timeout: 15000 }).catch(() => {
@@ -13,16 +10,14 @@ test.describe('Smoke Tests - Critical Paths', () => {
     });
     
     // Page should have loaded
+    await expect(page.locator('body')).toBeVisible({ timeout: 15000 });
     const content = await page.content();
     expect(content.length).toBeGreaterThan(100); // At least some content rendered
   });
 
   test('should load login page', async ({ page }) => {
-    await page.goto('/es/login');
-    
-    // Wait for React hydration and any loading states
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(3000); // Extra time for client-side rendering
+    await page.goto('/es/login', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('body')).toBeVisible({ timeout: 15000 });
     
     // Check that the page rendered something - be flexible about what
     // The login form may be inside a Card component or hidden behind loading state
@@ -37,13 +32,12 @@ test.describe('Smoke Tests - Critical Paths', () => {
   });
 
   test('should have responsive design', async ({ page }) => {
-    await page.goto('/es/login');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.goto('/es/login', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('body')).toBeVisible({ timeout: 15000 });
     
     // Test mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.waitForTimeout(500);
+    await expect(page.locator('body')).toBeVisible();
     
     // Page should still render something
     const mobileContent = await page.content();
@@ -51,18 +45,15 @@ test.describe('Smoke Tests - Critical Paths', () => {
     
     // Test desktop viewport
     await page.setViewportSize({ width: 1280, height: 720 });
-    await page.waitForTimeout(500);
+    await expect(page.locator('body')).toBeVisible();
     
     const desktopContent = await page.content();
     expect(desktopContent.length).toBeGreaterThan(100);
   });
 
   test('should have login form elements when fully loaded', async ({ page }) => {
-    await page.goto('/es/login');
-    await page.waitForLoadState('networkidle');
-    
-    // Wait longer for client-side hydration
-    await page.waitForTimeout(5000);
+    await page.goto('/es/login', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('domcontentloaded');
     
     // Check for any visible inputs (phone or password)
     const inputCount = await page.locator('input').count();
@@ -88,9 +79,8 @@ test.describe('Smoke Tests - Critical Paths', () => {
       }
     });
 
-    await page.goto('/es/login');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.goto('/es/login', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('body')).toBeVisible({ timeout: 15000 });
 
     // Filter out known non-critical errors
     const criticalErrors = errors.filter(e =>
@@ -112,11 +102,8 @@ test.describe('Smoke Tests - Critical Paths', () => {
   });
 
   test('should handle 404 gracefully', async ({ page }) => {
-    await page.goto('/es/nonexistent-page');
-    
-    // Should show 404 page or redirect
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    await page.goto('/es/nonexistent-page', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('body')).toBeVisible({ timeout: 15000 });
     
     // Either 404 page or redirect to home/login
     const content = await page.content();
