@@ -266,7 +266,9 @@ describe('AdminService', () => {
       expect(prisma.doctor.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            isActive: true,
+            user: expect.objectContaining({
+              isActive: true,
+            }),
           }),
         }),
       );

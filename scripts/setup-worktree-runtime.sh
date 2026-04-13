@@ -12,6 +12,7 @@ PY
 REPO_ROOT="$(git -C "$WORKTREE_PATH" rev-parse --show-toplevel)"
 RUNTIME_DIR="$WORKTREE_PATH/.worktree-runtime"
 RUNTIME_FILE="$RUNTIME_DIR/runtime.env"
+DATABASE_URL_SOURCE=""
 
 mkdir -p "$RUNTIME_DIR"
 
@@ -83,11 +84,118 @@ find_free_pair() {
   done
 }
 
-DATABASE_URL="$(read_env_value DATABASE_URL \
-  "$WORKTREE_PATH/backend/.env" \
-  "$REPO_ROOT/backend/.env" \
-  "$WORKTREE_PATH/.env" \
-  "$REPO_ROOT/.env")"
+get_worktree_paths() {
+  while IFS=' ' read -r key value; do
+    if [[ "$key" == "worktree" && -n "$value" ]]; then
+      printf '%s\n' "$value"
+    fi
+  done < <(git -C "$WORKTREE_PATH" worktree list --porcelain)
+}
+
+resolve_database_url() {
+  if [[ -n "${DATABASE_URL:-}" ]]; then
+    printf '%s\n' "$DATABASE_URL"
+    return 0
+  fi
+
+  local env_sources=(
+    "$WORKTREE_PATH/backend/.env"
+    "$REPO_ROOT/backend/.env"
+    "$WORKTREE_PATH/.env"
+    "$REPO_ROOT/.env"
+  )
+
+  while IFS= read -r wt_path; do
+    [[ -z "$wt_path" ]] && continue
+    env_sources+=(
+      "$wt_path/backend/.env"
+      "$wt_path/.env"
+    )
+  done < <(get_worktree_paths)
+
+  env_sources+=(
+    "$WORKTREE_PATH/backend/.env.worktree"
+    "$WORKTREE_PATH/.worktree-runtime/runtime.env"
+  )
+
+  while IFS= read -r wt_path; do
+    [[ -z "$wt_path" ]] && continue
+    env_sources+=(
+      "$wt_path/backend/.env.worktree"
+      "$wt_path/.worktree-runtime/runtime.env"
+    )
+  done < <(get_worktree_paths)
+
+  local source_file
+  for source_file in "${env_sources[@]}"; do
+    if value="$(read_env_value DATABASE_URL "$source_file" 2>/dev/null)"; then
+      DATABASE_URL_SOURCE="$source_file"
+      printf '%s\n' "$value"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+upsert_env_var() {
+  local file_path="$1"
+  local key="$2"
+  local value="$3"
+
+  python3 - "$file_path" "$key" "$value" <<'PY'
+import os
+import sys
+
+path, key, value = sys.argv[1], sys.argv[2], sys.argv[3]
+line = f"{key}={value}"
+
+content = []
+if os.path.exists(path):
+    with open(path, "r", encoding="utf-8") as fh:
+        content = fh.read().splitlines()
+
+updated = False
+for idx, current in enumerate(content):
+    if current.startswith(f"{key}="):
+        content[idx] = line
+        updated = True
+        break
+
+if not updated:
+    content.append(line)
+
+with open(path, "w", encoding="utf-8") as fh:
+    fh.write("\n".join(content).rstrip("\n") + "\n")
+PY
+}
+
+bootstrap_backend_for_e2e() {
+  local backend_dir="$WORKTREE_PATH/backend"
+
+  if [[ ! -d "$backend_dir" ]]; then
+    return 0
+  fi
+
+  if [[ "${SKIP_RUNTIME_BOOTSTRAP:-0}" == "1" ]]; then
+    printf '⚠️  Bootstrap de runtime omitido (SKIP_RUNTIME_BOOTSTRAP=1).\n'
+    return 0
+  fi
+
+  printf 'Preparando backend para E2E (prisma generate + seed)...\n'
+  (
+    cd "$backend_dir"
+    DATABASE_URL="$DATABASE_URL" pnpm prisma:generate
+    DATABASE_URL="$DATABASE_URL" pnpm prisma:seed
+  )
+}
+
+DATABASE_URL="$(resolve_database_url || true)"
+
+if [[ -z "$DATABASE_URL" ]]; then
+  printf 'No se pudo resolver DATABASE_URL para la worktree. Exportalo o definilo en un .env compartido.\n' >&2
+  exit 1
+fi
 
 read -r FRONTEND_PORT BACKEND_PORT < <(find_free_pair)
 
@@ -97,19 +205,49 @@ WORKTREE_PATH=$WORKTREE_PATH
 DATABASE_URL=$DATABASE_URL
 FRONTEND_PORT=$FRONTEND_PORT
 BACKEND_PORT=$BACKEND_PORT
-PORT=$BACKEND_PORT
 NEXT_PUBLIC_PORT=$FRONTEND_PORT
+FRONTEND_BASE_URL=http://127.0.0.1:$FRONTEND_PORT
+BACKEND_BASE_URL=http://127.0.0.1:$BACKEND_PORT
+E2E_PORT=$FRONTEND_PORT
+E2E_BASE_URL=http://127.0.0.1:$FRONTEND_PORT
 NEXT_PUBLIC_API_URL=http://127.0.0.1:$BACKEND_PORT/v1
 BACKEND_URL=http://127.0.0.1:$BACKEND_PORT
+NEXTAUTH_URL=http://127.0.0.1:$FRONTEND_PORT
+NEXTAUTH_SECRET=e2e-nextauth-secret
+WORKTREE_RUNTIME_MODE=prod
+SALT_ROUND=10
+JWT_SECRET=e2e-dev-secret
+JWT_EXPIRATION_TIME=15m
+JWT_REFRESH_EXPIRATION_TIME=7d
+OPENAI_API_KEY=e2e-dev-openai-key
+OPENAI_MODEL=gpt-4o-mini
+TWILIO_ACCOUNT_SID=AC00000000000000000000000000000000
+TWILIO_AUTH_TOKEN=00000000000000000000000000000000
+TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 EOF
 
 if [[ -d "$WORKTREE_PATH/backend" ]]; then
-  cat > "$WORKTREE_PATH/backend/.env.worktree" <<EOF
-DATABASE_URL=$DATABASE_URL
-PORT=$BACKEND_PORT
-BACKEND_PORT=$BACKEND_PORT
-FRONTEND_PORT=$FRONTEND_PORT
-EOF
+  BACKEND_ENV_WORKTREE="$WORKTREE_PATH/backend/.env.worktree"
+
+  if [[ -n "$DATABASE_URL_SOURCE" && -f "$DATABASE_URL_SOURCE" ]]; then
+    cp "$DATABASE_URL_SOURCE" "$BACKEND_ENV_WORKTREE"
+  else
+    : > "$BACKEND_ENV_WORKTREE"
+  fi
+
+  upsert_env_var "$BACKEND_ENV_WORKTREE" "DATABASE_URL" "$DATABASE_URL"
+  upsert_env_var "$BACKEND_ENV_WORKTREE" "PORT" "$BACKEND_PORT"
+  upsert_env_var "$BACKEND_ENV_WORKTREE" "BACKEND_PORT" "$BACKEND_PORT"
+  upsert_env_var "$BACKEND_ENV_WORKTREE" "FRONTEND_PORT" "$FRONTEND_PORT"
+  upsert_env_var "$BACKEND_ENV_WORKTREE" "SALT_ROUND" "10"
+  upsert_env_var "$BACKEND_ENV_WORKTREE" "JWT_SECRET" "e2e-dev-secret"
+  upsert_env_var "$BACKEND_ENV_WORKTREE" "JWT_EXPIRATION_TIME" "15m"
+  upsert_env_var "$BACKEND_ENV_WORKTREE" "JWT_REFRESH_EXPIRATION_TIME" "7d"
+  upsert_env_var "$BACKEND_ENV_WORKTREE" "OPENAI_API_KEY" "e2e-dev-openai-key"
+  upsert_env_var "$BACKEND_ENV_WORKTREE" "OPENAI_MODEL" "gpt-4o-mini"
+  upsert_env_var "$BACKEND_ENV_WORKTREE" "TWILIO_ACCOUNT_SID" "AC00000000000000000000000000000000"
+  upsert_env_var "$BACKEND_ENV_WORKTREE" "TWILIO_AUTH_TOKEN" "00000000000000000000000000000000"
+  upsert_env_var "$BACKEND_ENV_WORKTREE" "TWILIO_WHATSAPP_FROM" "whatsapp:+14155238886"
 fi
 
 if [[ -d "$WORKTREE_PATH/frontend" ]]; then
@@ -118,8 +256,12 @@ NEXT_PUBLIC_PORT=$FRONTEND_PORT
 PORT=$FRONTEND_PORT
 BACKEND_PORT=$BACKEND_PORT
 NEXT_PUBLIC_API_URL=http://127.0.0.1:$BACKEND_PORT/v1
+NEXTAUTH_URL=http://127.0.0.1:$FRONTEND_PORT
+NEXTAUTH_SECRET=e2e-nextauth-secret
 EOF
 fi
+
+bootstrap_backend_for_e2e
 
 printf 'Runtime preparado para %s\n' "$WORKTREE_PATH"
 printf 'Frontend: http://127.0.0.1:%s\n' "$FRONTEND_PORT"

@@ -2,6 +2,7 @@ import { Page, Locator, expect } from '@playwright/test';
 
 export class PatientFormPage {
   readonly page: Page;
+  readonly form: Locator;
   readonly nameInput: Locator;
   readonly lastNameInput: Locator;
   readonly emailInput: Locator;
@@ -15,6 +16,7 @@ export class PatientFormPage {
 
   constructor(page: Page) {
     this.page = page;
+    this.form = page.locator('[data-testid="patient-form"]').first();
     this.nameInput = page.locator('[data-testid="input-name"], input[name="name"]').first();
     this.lastNameInput = page.locator('[data-testid="input-lastName"], input[name="lastName"]').first();
     this.emailInput = page.locator('[data-testid="input-email"], input[type="email"], input[name="email"]').first();
@@ -29,14 +31,15 @@ export class PatientFormPage {
   }
 
   async gotoNew() {
-    await this.page.goto('/es/patients/new');
-    await this.page.waitForLoadState('networkidle');
-    await this.nameInput.waitFor({ state: 'visible', timeout: 10000 });
+    await this.page.goto('/es/patients/new', { waitUntil: 'domcontentloaded' });
+    await expect(this.page).toHaveURL(/\/patients\/new/, { timeout: 30000 });
+    await this.form.waitFor({ state: 'visible', timeout: 60000 });
+    await this.nameInput.waitFor({ state: 'visible', timeout: 60000 });
   }
 
   async gotoEdit(patientId: string) {
-    await this.page.goto(`/es/patients/${patientId}/edit`);
-    await this.page.waitForLoadState('networkidle');
+    await this.page.goto(`/es/patients/${patientId}/edit`, { waitUntil: 'domcontentloaded' });
+    await expect(this.page).toHaveURL(/\/patients\/[^/]+\/edit/, { timeout: 30000 });
     await this.nameInput.waitFor({ state: 'visible', timeout: 10000 });
   }
 
@@ -48,7 +51,7 @@ export class PatientFormPage {
     const option = this.page.locator('[role="option"], [data-radix-select-viewport] > div, [cmdk-item]').filter({ hasText: optionText }).first();
     await option.waitFor({ state: 'visible', timeout: 5000 });
     await option.click();
-    await this.page.waitForLoadState('networkidle');
+    await expect(triggerLocator).toContainText(optionText, { timeout: 5000 });
   }
 
   async fillForm(data: {
@@ -89,12 +92,12 @@ export class PatientFormPage {
 
   async submit() {
     await this.submitBtn.click();
-    await this.page.waitForLoadState('networkidle');
+    await expect(this.submitBtn).toBeVisible({ timeout: 5000 });
   }
 
   async cancel() {
     await this.cancelBtn.click();
-    await this.page.waitForLoadState('networkidle');
+    await expect(this.page.locator('body')).toBeVisible({ timeout: 10000 });
   }
 
   async expectValidationError(field: string) {

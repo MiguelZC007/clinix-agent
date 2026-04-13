@@ -15,30 +15,29 @@ export class MessagesPage {
     this.chatWindow = page.locator('[data-testid="chat-window"], [role="log"]').first();
     this.messageInput = page.locator('[data-testid="input-message"], textarea[name="message"], input[name="message"]').first();
     this.sendBtn = page.locator('[data-testid="btn-send"], button[type="submit"]').first();
-    this.searchInput = page.locator('[data-testid="input-search"], input[placeholder*="buscar"]').first();
+    this.searchInput = page.locator('[data-testid="conversation-list"] [data-testid="input-search"], [data-testid="conversation-list"] input[placeholder*="buscar" i]').first();
   }
 
   async goto() {
-    await this.page.goto('/es/messages');
-    await this.page.waitForLoadState('networkidle');
-    await this.conversationList.waitFor({ state: 'visible', timeout: 10000 });
+    await this.page.goto('/es/messages', { waitUntil: 'domcontentloaded' });
+    await expect(this.conversationList).toBeVisible({ timeout: 15000 });
   }
 
   async selectConversation(name: string) {
-    await this.conversationList.locator(`:text("${name}")`).first().click();
-    await this.page.waitForLoadState('networkidle');
+    await this.conversationList.locator(`button:has-text("${name}")`).first().click();
+    await expect(this.chatWindow).toBeVisible({ timeout: 10000 });
   }
 
   async sendMessage(message: string) {
     await this.messageInput.fill(message);
     await this.sendBtn.click();
-    await this.page.waitForLoadState('networkidle');
+    await expect(this.messageInput).toHaveValue('', { timeout: 10000 });
   }
 
   async searchConversations(query: string) {
     await this.searchInput.fill(query);
     await this.page.keyboard.press('Enter');
-    await this.page.waitForLoadState('networkidle');
+    await expect(this.searchInput).toHaveValue(query, { timeout: 5000 });
   }
 
   async expectMessageInChat(message: string) {

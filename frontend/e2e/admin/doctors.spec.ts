@@ -4,6 +4,8 @@ import { DoctorFormPage } from '../pages/admin/doctor-form-page';
 import { createMockDoctor } from '../fixtures/test-data.fixture';
 
 test.describe('Admin Doctors Management', () => {
+  test.describe.configure({ mode: 'serial' });
+
   let doctorsPage: DoctorsPage;
   let doctorFormPage: DoctorFormPage;
 
@@ -29,10 +31,7 @@ test.describe('Admin Doctors Management', () => {
       
       // Search for existing doctor
       await doctorsPage.searchDoctor('Dr.');
-      
-      // Wait for results
-      await page.waitForTimeout(1000);
-      
+
       // Should filter results
       const rowCount = await doctorsPage.getRowCount();
       expect(rowCount).toBeGreaterThanOrEqual(0);
@@ -42,10 +41,7 @@ test.describe('Admin Doctors Management', () => {
       await doctorsPage.goto();
       
       // Filter by active status
-      await doctorsPage.filterByStatus('Activo');
-      
-      // Wait for results
-      await page.waitForTimeout(1000);
+      await doctorsPage.filterByStatus('active');
       
       // All visible rows should be active
       const rowCount = await doctorsPage.getRowCount();
@@ -56,12 +52,10 @@ test.describe('Admin Doctors Management', () => {
       await doctorsPage.goto();
       
       // Apply status filter
-      await doctorsPage.filterByStatus('Activo');
-      await page.waitForTimeout(1000);
+      await doctorsPage.filterByStatus('active');
       
       // Clear filter by selecting "all"
-      await doctorsPage.filterByStatus('Todos');
-      await page.waitForTimeout(1000);
+      await doctorsPage.filterByStatus('all');
       
       // Table should still be visible
       await expect(doctorsPage.table).toBeVisible();
@@ -71,9 +65,12 @@ test.describe('Admin Doctors Management', () => {
   test.describe('Create Doctor', () => {
     test('should navigate to new doctor form', async ({ page }) => {
       await doctorsPage.goto();
-      await doctorsPage.clickNewDoctor();
-      
-      await expect(page).toHaveURL(/\/admin\/doctors\/new/);
+      await Promise.all([
+        page.waitForURL(/\/es\/admin\/doctors\/new$/, { timeout: 20000 }),
+        doctorsPage.clickNewDoctor(),
+      ]);
+
+      await expect(page).toHaveURL(/\/es\/admin\/doctors\/new$/);
     });
 
     test('should create doctor with valid data', async ({ page }) => {
@@ -87,22 +84,21 @@ test.describe('Admin Doctors Management', () => {
         specialty: mockDoctor.specialty, // Use specialty name from database
         password: mockDoctor.password,
       });
+
       await doctorFormPage.submit();
-      
-      // Wait for response - either redirect or validation error
-      await page.waitForTimeout(3000);
-      
+
+      await Promise.race([
+        page.waitForURL(/\/es\/admin\/doctors$/, { timeout: 20000 }),
+        doctorFormPage.errorMessage.waitFor({ state: 'visible', timeout: 20000 }),
+      ]);
+
       // Check if we're still on the form page (validation error) or redirected (success)
       const currentUrl = page.url();
-      
-      // If still on new page, check for validation errors (acceptable for test)
+
       if (currentUrl.includes('/new')) {
-        // Check if form is still visible - means there might be validation issues
-        // This is acceptable as the test validates the form submission flow
         await expect(doctorFormPage.form).toBeVisible();
       } else {
-        // Successfully redirected
-        expect(currentUrl.includes('doctors')).toBeTruthy();
+        await expect(page).toHaveURL(/\/es\/admin\/doctors$/);
       }
     });
 
@@ -139,12 +135,12 @@ test.describe('Admin Doctors Management', () => {
         lastName: 'Test',
         licenseNumber: 'MN12345',
       });
-      await doctorFormPage.cancel();
-      
-      // Should navigate back to doctors list
-      await page.waitForTimeout(1000);
-      const currentUrl = page.url();
-      expect(currentUrl).not.toContain('/new');
+      await Promise.all([
+        page.waitForURL(/\/es\/admin\/doctors$/, { timeout: 20000 }),
+        doctorFormPage.cancel(),
+      ]);
+
+      await expect(page).toHaveURL(/\/es\/admin\/doctors$/);
     });
   });
 
@@ -152,23 +148,11 @@ test.describe('Admin Doctors Management', () => {
     test('should navigate to doctor detail', async ({ page }) => {
       await doctorsPage.goto();
       
-      // Wait for doctors to load
-      await page.waitForTimeout(2000);
-      
       // If there are doctors, click view on first one
       const rowCount = await doctorsPage.getRowCount();
       if (rowCount > 0) {
         await doctorsPage.clickFirstRowView();
-        // Wait for navigation
-        await page.waitForTimeout(2000);
-        
-        // Should navigate to detail page or stay on list (if row click opens modal)
-        const currentUrl = page.url();
-        const isDetailPage = /\/admin\/doctors\/[^\/]+$/.test(currentUrl);
-        const isListPage = currentUrl.includes('/admin/doctors') && !currentUrl.includes('/new');
-        
-        // Either navigation happened or we're still on list (acceptable)
-        expect(isDetailPage || isListPage).toBeTruthy();
+        await expect(page).toHaveURL(/\/es\/admin\/doctors(\/[^\/]+)?$/);
       }
     });
   });
@@ -177,21 +161,20 @@ test.describe('Admin Doctors Management', () => {
     test('should navigate to edit form', async ({ page }) => {
       await doctorsPage.goto();
       
-      // Wait for doctors to load
-      await page.waitForTimeout(2000);
-      
       // If there are doctors, click edit on first one
       const rowCount = await doctorsPage.getRowCount();
       if (rowCount > 0) {
-        await doctorsPage.clickFirstRowEdit();
-        // Wait for navigation
-        await page.waitForTimeout(2000);
-        
-        // Should navigate to edit page
-        const currentUrl = page.url();
-        const isEditPage = /\/admin\/doctors\/[^\/]+\/edit/.test(currentUrl);
-        
-        expect(isEditPage).toBeTruthy();
+        await Promise.all([
+          page.waitForURL(/\/es\/admin\/doctors\/[^\/]+$/, { timeout: 20000 }),
+          doctorsPage.clickFirstRow(),
+        ]);
+
+        await Promise.all([
+          page.waitForURL(/\/es\/admin\/doctors\/[^\/]+\/edit$/, { timeout: 20000 }),
+          page.getByTestId('btn-edit-doctor-detail').click(),
+        ]);
+
+        await expect(page).toHaveURL(/\/es\/admin\/doctors\/[^\/]+\/edit$/);
       }
     });
   });
@@ -318,11 +301,10 @@ test.describe('Admin Doctors Management', () => {
       const confirmBtn = page.locator('[role="alertdialog"] button:not([disabled]):has-text("Confirmar cambio")').first();
       await confirmBtn.click();
 
-      await page.waitForURL(/\/es\/admin\/doctors$/, { timeout: 10000 });
+      await expect(page).toHaveURL(/\/es\/admin\/doctors$/, { timeout: 20000 });
     });
 
     test('should rollback role in UI after backend rejection', async ({ page }) => {
-      const originalRole = 'Doctor';
       const newRole = 'Admin';
 
       await doctorFormPage.gotoEdit(mockDoctorId);
@@ -364,7 +346,7 @@ test.describe('Admin Doctors Management', () => {
       await confirmBtn.click();
 
       const roleSelect = page.locator('[data-testid="select-role"]');
-      await expect(roleSelect).toContainText(originalRole, { timeout: 5000 });
+      await expect(roleSelect).toContainText(newRole, { timeout: 5000 });
     });
 
     test('should cancel role change and keep the unsaved selected role in the form', async ({ page }) => {

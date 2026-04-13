@@ -112,7 +112,7 @@ export default function DoctorsPage() {
         title={t("doctors.title")}
         description={t("doctors.description")}
         actions={
-          <Button onClick={() => router.push("/admin/doctors/new")}>
+          <Button onClick={() => router.push("/admin/doctors/new")} data-testid="btn-new-doctor">
             <Plus className="mr-2 h-4 w-4" />
             {t("doctors.newDoctor")}
           </Button>

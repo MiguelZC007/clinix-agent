@@ -66,7 +66,7 @@ export default function PatientDetailPage({ params }: PatientDetailPageProps) {
               <ArrowLeft className="mr-2 h-4 w-4" />
               {t("common.back")}
             </Button>
-            <Button onClick={() => router.push(`/patients/${patient.id}/edit`)}>
+            <Button data-testid="btn-edit-patient-detail" onClick={() => router.push(`/patients/${patient.id}/edit`)}>
               <Pencil className="mr-2 h-4 w-4" />
               {t("common.edit")}
             </Button>

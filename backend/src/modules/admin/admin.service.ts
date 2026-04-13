@@ -120,18 +120,22 @@ export class AdminService {
 
     const where: Record<string, unknown> = {};
 
+    const userWhere: Record<string, unknown> = {};
+
     if (search) {
-      where.user = {
-        OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { lastName: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-        ],
-      };
+      userWhere.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
     }
 
     if (query.isActive !== undefined) {
-      where.isActive = query.isActive;
+      userWhere.isActive = query.isActive;
+    }
+
+    if (Object.keys(userWhere).length > 0) {
+      where.user = userWhere;
     }
 
     if (query.specialtyId) {
@@ -379,7 +383,7 @@ export class AdminService {
       specialtyId: (doctor?.specialtyId as string) ?? '',
       specialtyName: (specialty?.name as string) ?? '',
       licenseNumber: (doctor?.licenseNumber as string) ?? '',
-      isActive: (doctor?.isActive as boolean) ?? true,
+      isActive: (userRecord.isActive as boolean) ?? true,
       createdAt: (doctor?.createdAt as Date) ?? (userRecord.createdAt as Date),
       updatedAt: (doctor?.updatedAt as Date) ?? (userRecord.updatedAt as Date),
     };

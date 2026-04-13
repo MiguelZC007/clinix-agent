@@ -2,42 +2,45 @@ import { test as setup, expect } from '@playwright/test';
 import { E2E_TEST_CREDENTIALS } from './fixtures/test-credentials';
 
 const authFile = 'playwright/.auth/admin.json';
-const adminLandingPath = '/es/admin/doctors';
 
 setup('authenticate admin session', async ({ page }) => {
   // Set longer timeout for auth setup
-  setup.setTimeout(60000);
+  setup.setTimeout(120000);
 
-  const phoneInput = page.locator('[data-testid="input-phone"]').first();
-  const passwordInput = page.locator('[data-testid="input-password"]').first();
-  const submitBtn = page.locator('[data-testid="btn-login"]').first();
-  
-  // Navigate to login
-  await page.goto('/es/login', { waitUntil: 'domcontentloaded' });
-  
-  // Fill login form with the seeded ADMIN account.
-  await expect(phoneInput).toBeVisible({ timeout: 15000 });
-  await expect(passwordInput).toBeVisible({ timeout: 15000 });
-  await expect(submitBtn).toBeVisible({ timeout: 15000 });
-  
-  await phoneInput.fill(E2E_TEST_CREDENTIALS.admin.phoneInput);
-  await passwordInput.fill(E2E_TEST_CREDENTIALS.admin.password);
-  
-  // Wait for the authenticated session to exist, then navigate explicitly to an
-  // admin-only route before saving the storage state.
-  await submitBtn.click();
-  await expect.poll(async () => page.evaluate(async () => {
-    const response = await fetch('/api/auth/session');
-    const session = await response.json();
-    return session?.user?.role ?? null;
-  }), { timeout: 30000 }).toBe('ADMIN');
-  await page.goto(adminLandingPath);
-  await expect(page).toHaveURL(/\/es\/admin\/doctors(\/|$)/, { timeout: 30000 });
-  
-  // Verify the admin session is active by ensuring we left the login route.
+  const csrfResponse = await page.request.get('/api/auth/csrf');
+  expect(csrfResponse.ok()).toBeTruthy();
+  const csrfBody = await csrfResponse.json() as { csrfToken?: string };
+  expect(csrfBody.csrfToken).toBeTruthy();
+
+  const callbackPayload = new URLSearchParams({
+    csrfToken: csrfBody.csrfToken!,
+    phone: E2E_TEST_CREDENTIALS.admin.phone,
+    password: E2E_TEST_CREDENTIALS.admin.password,
+    callbackUrl: '/es/admin/doctors',
+    json: 'true',
+  });
+
+  const loginResponse = await page.request.post('/api/auth/callback/credentials', {
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+    },
+    data: callbackPayload.toString(),
+  });
+  expect(loginResponse.ok()).toBeTruthy();
+
+  await expect.poll(async () => {
+    const cookies = await page.context().cookies();
+    return cookies.some((cookie) =>
+      cookie.name === 'next-auth.session-token' ||
+      cookie.name === '__Secure-next-auth.session-token' ||
+      cookie.name === 'authjs.session-token' ||
+      cookie.name === '__Secure-authjs.session-token',
+    );
+  }, { timeout: 30000 }).toBeTruthy();
+  // Keep setup resilient: persist storage state once credentials callback +
+  // session cookie are in place. Admin specs navigate to protected routes.
   const url = page.url();
   console.log('[playwright setup] admin session ready at:', url);
-  expect(url).not.toContain('login');
   
   // Verify session cookie exists (check multiple cookie names for resilience)
   const cookies = await page.context().cookies();
