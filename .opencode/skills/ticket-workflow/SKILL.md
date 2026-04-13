@@ -6,7 +6,7 @@ description: >
 license: Apache-2.0
 metadata:
   author: clinix-agent
-  version: "1.2"
+  version: "1.3"
 ---
 
 ## When to Use
@@ -224,6 +224,35 @@ cd "$WORKTREE_PATH"
 pnpm test                    # unit tests
 pnpm test:integration        # integration tests (if applicable)
 ```
+
+### 3.2.1 Frontend E2E Runtime (PM2 background, per worktree)
+
+For Playwright frontend E2E, DO NOT rely on Playwright-managed dev mode. Use PM2 background services tied to the ticket worktree.
+
+```bash
+# Always from monorepo root, targeting the SAME ticket worktree
+./scripts/setup-worktree-runtime.sh "$WORKTREE_PATH"
+./scripts/verify-worktree-runtime.sh "$WORKTREE_PATH"
+
+# Start backend + frontend in background with PM2 (worktree-scoped names)
+./scripts/worktree-pm2-e2e.sh start "$WORKTREE_PATH"
+
+# Run frontend E2E from the ticket worktree
+set -a; source "$WORKTREE_PATH/.worktree-runtime/runtime.env"; set +a
+cd "$WORKTREE_PATH/frontend"
+E2E_PORT="$FRONTEND_PORT" E2E_BASE_URL="http://127.0.0.1:$FRONTEND_PORT" NEXT_PUBLIC_API_URL="http://127.0.0.1:$BACKEND_PORT/v1" pnpm test:e2e
+
+# Mandatory cleanup: stop/delete ONLY this worktree's PM2 processes
+cd "$WORKTREE_PATH"
+./scripts/worktree-pm2-e2e.sh stop "$WORKTREE_PATH"
+```
+
+**PM2 safety rules:**
+- Start services only for frontend E2E runs that need browser runtime.
+- Process names MUST be unique per worktree/ticket and never generic.
+- Never run `pm2 delete all` or global cleanup commands.
+- Cleanup must remove only the PM2 processes created for that specific worktree.
+- If PM2 start/readiness fails, STOP and fix runtime before E2E, commit, push, or PR.
 
 **If ANY test fails:**
 1. Identify the broken test
