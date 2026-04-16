@@ -222,6 +222,8 @@ describe('Doctors API (e2e)', () => {
 
 ## Commands
 
+Before backend `pnpm test:e2e`, load `.opencode/rules/e2e-runtime-prep.md`, prepare/verify the worktree runtime env, and run the current in-process Jest/Supertest suite without PM2.
+
 ```bash
 # Run all unit tests
 cd backend && pnpm test
@@ -232,8 +234,14 @@ pnpm test -- doctors.service.spec.ts
 # Run with coverage
 pnpm test:cov
 
-# Run e2e tests
-pnpm test:e2e
+# From monorepo root: prepare runtime env once, then run the in-process suite
+./scripts/setup-worktree-runtime.sh "$WORKTREE_PATH"
+./scripts/verify-worktree-runtime.sh "$WORKTREE_PATH"
+cd "$WORKTREE_PATH/backend" && source ../.worktree-runtime/runtime.env && pnpm test:e2e
+
+# Or, if already inside the target worktree root
+source .worktree-runtime/runtime.env
+cd backend && pnpm test:e2e
 
 # Run e2e tests (specific file)
 pnpm test:e2e -- doctors.e2e-spec.ts

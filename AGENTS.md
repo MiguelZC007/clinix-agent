@@ -29,6 +29,7 @@ Dual-app medical assistant: conversational AI for doctors via WhatsApp + web das
 | Before ANY commit | pre-commit-gate | `.opencode/rules/pre-commit-gate.md` |
 | Before ANY commit | commit-language | `.opencode/rules/commit-language.md` |
 | Before tests/commit/PR in a worktree | worktree-runtime-gate | `.opencode/rules/worktree-runtime-gate.md` |
+| Before frontend or backend E2E tests | e2e-runtime-prep | `.opencode/rules/e2e-runtime-prep.md` |
 | Writing new code | test-mandate | `.opencode/rules/test-mandate.md` |
 | Writing backend tests | backend-testing | `.opencode/rules/backend-testing.md` |
 | Writing E2E frontend tests | frontend-e2e | `.opencode/rules/frontend-e2e.md` |

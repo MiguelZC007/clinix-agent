@@ -268,6 +268,7 @@ export default defineConfig({
 ## Verification Checklist
 
 Before marking complete:
+- [ ] External runtime prepared with `./scripts/worktree-runtime.sh prepare "$WORKTREE_PATH" prod`
 - [ ] `pnpm test:e2e` passes locally
 - [ ] `pnpm test:e2e` passes in CI
 - [ ] No hardcoded waits (>1000ms)
@@ -290,6 +291,7 @@ Before marking complete:
 ## Resources
 
 - **Rule**: `.opencode/rules/frontend-e2e.md` ← Full patterns & best practices
+- **Runtime flow**: `setup-worktree-runtime.sh` → `verify-worktree-runtime.sh` → `worktree-runtime.sh prepare ... prod` → `worktree-runtime.sh start ... prod`
 - **Dev Skill**: `.opencode/skills/dev-services/SKILL.md` ← Start/stop servers
 - Playwright docs: https://playwright.dev
 - Best practices: https://playwright.dev/docs/best-practices

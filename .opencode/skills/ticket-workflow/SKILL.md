@@ -233,9 +233,10 @@ For Playwright frontend E2E, DO NOT rely on Playwright-managed dev mode. Use PM2
 # Always from monorepo root, targeting the SAME ticket worktree
 ./scripts/setup-worktree-runtime.sh "$WORKTREE_PATH"
 ./scripts/verify-worktree-runtime.sh "$WORKTREE_PATH"
+./scripts/worktree-runtime.sh prepare "$WORKTREE_PATH" prod
 
 # Start backend + frontend in background with PM2 (worktree-scoped names)
-./scripts/worktree-pm2-e2e.sh start "$WORKTREE_PATH"
+./scripts/worktree-runtime.sh start "$WORKTREE_PATH" prod
 
 # Run frontend E2E from the ticket worktree
 set -a; source "$WORKTREE_PATH/.worktree-runtime/runtime.env"; set +a
@@ -244,11 +245,12 @@ E2E_PORT="$FRONTEND_PORT" E2E_BASE_URL="http://127.0.0.1:$FRONTEND_PORT" NEXT_PU
 
 # Mandatory cleanup: stop/delete ONLY this worktree's PM2 processes
 cd "$WORKTREE_PATH"
-./scripts/worktree-pm2-e2e.sh stop "$WORKTREE_PATH"
+./scripts/worktree-runtime.sh stop "$WORKTREE_PATH"
 ```
 
 **PM2 safety rules:**
 - Start services only for frontend E2E runs that need browser runtime.
+- Run `worktree-runtime.sh prepare "$WORKTREE_PATH" prod` before `start` so missing or stale prod artifacts fail early.
 - Process names MUST be unique per worktree/ticket and never generic.
 - Never run `pm2 delete all` or global cleanup commands.
 - Cleanup must remove only the PM2 processes created for that specific worktree.

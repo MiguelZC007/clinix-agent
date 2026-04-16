@@ -32,6 +32,8 @@ All must pass inside the worktree:
 ./scripts/verify-worktree-runtime.sh "$WORKTREE_PATH"
 ```
 
+For E2E-specific boot requirements, also load `.opencode/rules/e2e-runtime-prep.md`.
+
 ## Port Policy
 
 - Preferred pairs are sequential by worktree: `3000/4000`, `3001/4001`, `3002/4002`, etc.
