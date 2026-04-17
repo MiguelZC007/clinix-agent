@@ -267,6 +267,23 @@ BASE_URL=http://localhost:3003
 
 ## Commands
 
+Before any frontend E2E run, load `.opencode/rules/e2e-runtime-prep.md` and boot the external PM2 runtime in `prod` mode through the canonical wrapper:
+
+```bash
+./scripts/setup-worktree-runtime.sh "$WORKTREE_PATH"
+./scripts/verify-worktree-runtime.sh "$WORKTREE_PATH"
+./scripts/worktree-runtime.sh prepare "$WORKTREE_PATH" prod
+./scripts/worktree-runtime.sh start "$WORKTREE_PATH" prod
+cd "$WORKTREE_PATH/frontend" && pnpm test:e2e
+./scripts/worktree-runtime.sh stop "$WORKTREE_PATH"
+```
+
+Why `prepare` matters:
+
+- It fails before PM2 boot if the frontend prod artifact is missing or incomplete for `next start`
+- It makes the regeneration step explicit: rebuild in the same worktree with `pnpm --filter frontend build`
+- It warns that a stale or copied `.next` can be incompatible even if the directory exists
+
 ```bash
 # Run all E2E tests
 cd frontend && pnpm test:e2e
