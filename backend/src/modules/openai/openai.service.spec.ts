@@ -58,6 +58,10 @@ interface MockClinicHistoryService {
   createWithoutAppointment: jest.Mock;
 }
 
+interface MockStructuringService {
+  structureAnamnesis: jest.Mock;
+}
+
 describe('OpenaiService budget preflight', () => {
   let service: OpenaiService;
   let prisma: MockPrisma;
@@ -121,6 +125,7 @@ describe('OpenaiService budget preflight', () => {
         create: jest.fn(),
         createWithoutAppointment: jest.fn(),
       } as never,
+      { structureAnamnesis: jest.fn() } as never,
     );
   });
 
@@ -294,6 +299,7 @@ describe('OpenaiService clinic history prescription mapping', () => {
   let service: OpenaiService;
   let prisma: MockPrisma;
   let clinicHistoryService: MockClinicHistoryService;
+  let structuringService: MockStructuringService;
 
   const createService = () => {
     prisma = {
@@ -324,6 +330,10 @@ describe('OpenaiService clinic history prescription mapping', () => {
       createWithoutAppointment: jest.fn(),
     };
 
+    structuringService = {
+      structureAnamnesis: jest.fn(),
+    };
+
     return new OpenaiService(
       prisma as never,
       {
@@ -334,6 +344,7 @@ describe('OpenaiService clinic history prescription mapping', () => {
       } as never,
       { findTodaysByDoctor: jest.fn() } as never,
       clinicHistoryService as never,
+      structuringService as never,
     );
   };
 
@@ -566,5 +577,89 @@ describe('OpenaiService clinic history prescription mapping', () => {
         expect(dto.specialtyId).toBe('550e8400-e29b-41d4-a716-446655440002');
       },
     );
+  });
+
+  describe('executeToolFunction() con structure_anamnesis', () => {
+    it('retorna envelope exitoso y no persiste historia clínica automáticamente', async () => {
+      service = createService();
+      (
+        service as unknown as { structuringService: MockStructuringService }
+      ).structuringService = structuringService;
+      structuringService.structureAnamnesis.mockResolvedValue({
+        ok: true,
+        data: { consultationReason: 'ok' },
+      });
+
+      const result = await service['executeToolFunction'](
+        'doctor-uuid',
+        'structure_anamnesis',
+        {
+          text: 'Paciente con dolor lumbar',
+          mode: 'WITHOUT_APPOINTMENT',
+        },
+      );
+
+      expect(structuringService.structureAnamnesis).toHaveBeenCalledWith({
+        text: 'Paciente con dolor lumbar',
+        mode: 'WITHOUT_APPOINTMENT',
+        patientRef: { patientId: undefined, patientNumber: undefined },
+        specialtyRef: { specialtyId: undefined, specialtyCode: undefined },
+      });
+      expect(clinicHistoryService.create).not.toHaveBeenCalled();
+      expect(
+        clinicHistoryService.createWithoutAppointment,
+      ).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        ok: true,
+        data: { consultationReason: 'ok' },
+      });
+    });
+
+    it('retorna fallo normalizado sin persistir cuando structuring falla', async () => {
+      service = createService();
+      (
+        service as unknown as { structuringService: MockStructuringService }
+      ).structuringService = structuringService;
+      structuringService.structureAnamnesis.mockResolvedValue({
+        ok: false,
+        error: {
+          category: 'SEMANTIC_VALIDATION',
+          code: 'DTO_VALIDATION_FAILED',
+          message: 'invalid',
+          fields: ['consultationReason'],
+        },
+      });
+
+      const result = await service['executeToolFunction'](
+        'doctor-uuid',
+        'structure_anamnesis',
+        {
+          text: 'Texto no válido',
+          mode: 'WITH_APPOINTMENT',
+          appointmentId: '550e8400-e29b-41d4-a716-446655440003',
+        },
+      );
+
+      expect(structuringService.structureAnamnesis).toHaveBeenCalledWith({
+        text: 'Texto no válido',
+        mode: 'WITH_APPOINTMENT',
+        appointmentId: '550e8400-e29b-41d4-a716-446655440003',
+        patientRef: { patientId: undefined, patientNumber: undefined },
+        specialtyRef: { specialtyId: undefined, specialtyCode: undefined },
+      });
+      expect(clinicHistoryService.create).not.toHaveBeenCalled();
+      expect(
+        clinicHistoryService.createWithoutAppointment,
+      ).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        ok: false,
+        error: {
+          category: 'SEMANTIC_VALIDATION',
+          code: 'DTO_VALIDATION_FAILED',
+          message: 'invalid',
+          fields: ['consultationReason'],
+        },
+      });
+    });
   });
 });

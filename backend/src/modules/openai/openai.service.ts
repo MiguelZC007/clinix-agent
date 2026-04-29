@@ -24,6 +24,7 @@ import type { AppointmentResponseDto } from '../appointment/dto/appointment-resp
 import environment from 'src/core/config/environments';
 import { openaiTools } from './tool-definitions.service';
 import { SYSTEM_PROMPT } from './system-prompt.service';
+import { StructuringService } from './structuring.service';
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -53,6 +54,7 @@ export class OpenaiService {
     private readonly conversationService: ConversationService,
     private readonly appointmentService: AppointmentService,
     private readonly clinicHistoryService: ClinicHistoryService,
+    private readonly structuringService: StructuringService,
   ) {
     if (
       !environment.OPENAI_API_KEY ||
@@ -1274,6 +1276,41 @@ export class OpenaiService {
           doctorId,
           dtoWithoutAppointment,
         );
+      }
+
+      case 'structure_anamnesis': {
+        const text = typeof args.text === 'string' ? args.text : '';
+        return this.structuringService.structureAnamnesis({
+          text,
+          mode:
+            args.mode === 'WITH_APPOINTMENT'
+              ? 'WITH_APPOINTMENT'
+              : 'WITHOUT_APPOINTMENT',
+          appointmentId:
+            typeof args.appointmentId === 'string'
+              ? args.appointmentId
+              : undefined,
+          patientRef: {
+            patientId:
+              typeof args.patientId === 'string' ? args.patientId : undefined,
+            patientNumber:
+              typeof args.patientNumber === 'number' &&
+              Number.isInteger(args.patientNumber)
+                ? args.patientNumber
+                : undefined,
+          },
+          specialtyRef: {
+            specialtyId:
+              typeof args.specialtyId === 'string'
+                ? args.specialtyId
+                : undefined,
+            specialtyCode:
+              typeof args.specialtyCode === 'number' &&
+              Number.isInteger(args.specialtyCode)
+                ? args.specialtyCode
+                : undefined,
+          },
+        });
       }
 
       case 'get_all_clinic_histories':

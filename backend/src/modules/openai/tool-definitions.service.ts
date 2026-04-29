@@ -365,6 +365,50 @@ export const clinicHistoryTools: ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
+      name: 'structure_anamnesis',
+      description:
+        'Transforma texto libre de anamnesis a payload estructurado validable antes de crear historia clínica.',
+      parameters: {
+        type: 'object',
+        properties: {
+          text: {
+            type: 'string',
+            description: 'Texto libre de la anamnesis dictada por el médico.',
+          },
+          mode: {
+            type: 'string',
+            enum: ['WITH_APPOINTMENT', 'WITHOUT_APPOINTMENT'],
+            description:
+              'WITH_APPOINTMENT si existe cita; WITHOUT_APPOINTMENT para guardia o atención sin cita.',
+          },
+          appointmentId: {
+            type: 'string',
+            description: 'UUID de cita (solo para WITH_APPOINTMENT).',
+          },
+          patientId: {
+            type: 'string',
+            description: 'UUID de paciente (opcional).',
+          },
+          specialtyId: {
+            type: 'string',
+            description: 'UUID de especialidad (opcional).',
+          },
+          patientNumber: {
+            type: 'integer',
+            description: 'Número del paciente (opcional).',
+          },
+          specialtyCode: {
+            type: 'integer',
+            description: 'Código de especialidad (opcional).',
+          },
+        },
+        required: ['text', 'mode'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'create_clinic_history',
       description:
         'Create a new clinic history record. Can be linked to an appointment (provide appointmentId) or created without one. When without appointment: ask the doctor for patientNumber and specialtyCode (do not ask for UUIDs). Request one piece of information at a time: e.g. first ask for patient number, then specialty code, then consultation reason, etc.',
