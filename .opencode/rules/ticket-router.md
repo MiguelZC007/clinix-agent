@@ -36,9 +36,9 @@ Automatically determines which package(s) to work on inside the monorepo based o
 
 ## Usage
 
-Before creating the ticket branch/worktree, run:
+Before creating the ticket branch, run:
 ```
 Read this file → Match ticket prefix → Know which package(s) need changes
 ```
 
-If a ticket affects both packages (rare), use ONE branch and ONE worktree at the monorepo root, then work in both `backend/` and `frontend/` as needed.
+If a ticket affects both packages (rare), use ONE branch at the monorepo root checkout, then work in both `backend/` and `frontend/` as needed.

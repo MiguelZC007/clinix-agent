@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-WORKTREE_PATH_INPUT="${1:-$(pwd)}"
-WORKTREE_PATH="$(python3 - "$WORKTREE_PATH_INPUT" <<'PY'
+CHECKOUT_ROOT_INPUT="${1:-$(pwd)}"
+CHECKOUT_ROOT="$(python3 - "$CHECKOUT_ROOT_INPUT" <<'PY'
 import os
 import sys
 print(os.path.realpath(sys.argv[1]))
 PY
 )"
 
-RUNTIME_FILE="$WORKTREE_PATH/.worktree-runtime/runtime.env"
+RUNTIME_FILE="$CHECKOUT_ROOT/.checkout-runtime/runtime.env"
 
 if [[ ! -f "$RUNTIME_FILE" ]]; then
   printf 'Falta runtime env: %s\n' "$RUNTIME_FILE" >&2
@@ -50,16 +50,16 @@ if [[ "$E2E_BASE_URL" != "$expected_e2e_base_url" ]]; then
   exit 1
 fi
 
-if [[ -d "$WORKTREE_PATH/backend" && ! -f "$WORKTREE_PATH/backend/.env.worktree" ]]; then
-  printf 'Falta backend/.env.worktree en la worktree\n' >&2
+if [[ -d "$CHECKOUT_ROOT/backend" && ! -f "$CHECKOUT_ROOT/backend/.env.checkout" ]]; then
+  printf 'Falta backend/.env.checkout en el checkout\n' >&2
   exit 1
 fi
 
-if [[ -d "$WORKTREE_PATH/frontend" && ! -f "$WORKTREE_PATH/frontend/.env.worktree" ]]; then
-  printf 'Falta frontend/.env.worktree en la worktree\n' >&2
+if [[ -d "$CHECKOUT_ROOT/frontend" && ! -f "$CHECKOUT_ROOT/frontend/.env.checkout" ]]; then
+  printf 'Falta frontend/.env.checkout en el checkout\n' >&2
   exit 1
 fi
 
-printf 'Runtime verificado para %s\n' "$WORKTREE_PATH"
+printf 'Runtime verificado para %s\n' "$CHECKOUT_ROOT"
 printf 'Frontend port: %s\n' "$FRONTEND_PORT"
 printf 'Backend port: %s\n' "$BACKEND_PORT"
