@@ -14,6 +14,8 @@ import { PatientAntecedentsDto } from './dto/patient-antecedents.dto';
 import { PatientListQueryDto } from './dto/patient-list-query.dto';
 import { Gender } from 'src/core/enum/gender.enum';
 import environment from 'src/core/config/environments';
+import { Role } from 'src/core/enum/role.enum';
+import type { PatientAccessScope } from './utils';
 
 export interface PatientListResultDto {
   items: PatientResponseDto[];
@@ -85,7 +87,7 @@ export class PatientService {
 
   async findAll(
     query: PatientListQueryDto,
-    doctorId: string,
+    scope: PatientAccessScope,
   ): Promise<PatientListResultDto> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 10;
@@ -104,7 +106,7 @@ export class PatientService {
       : {};
     const where = {
       ...searchFilter,
-      registeredByDoctorId: doctorId,
+      ...this.buildAccessWhere(scope),
     };
 
     const [patients, total] = await this.prisma.$transaction([
@@ -128,7 +130,10 @@ export class PatientService {
     };
   }
 
-  async findOne(id: string, doctorId: string): Promise<PatientResponseDto> {
+  async findOne(
+    id: string,
+    scope: PatientAccessScope,
+  ): Promise<PatientResponseDto> {
     const patient = await this.prisma.patient.findUnique({
       where: { id },
       include: {
@@ -140,9 +145,7 @@ export class PatientService {
       throw new NotFoundException('patient-not-found');
     }
 
-    if (patient.registeredByDoctorId !== doctorId) {
-      throw new ForbiddenException('patient-not-owned-by-doctor');
-    }
+    this.assertOwnership(patient.registeredByDoctorId, scope);
 
     return this.mapToPatientResponseFromPatient(patient);
   }
@@ -150,7 +153,7 @@ export class PatientService {
   async update(
     id: string,
     updatePatientDto: UpdatePatientDto,
-    doctorId: string,
+    scope: PatientAccessScope,
   ): Promise<PatientResponseDto> {
     const hashedPassword = updatePatientDto.password
       ? await bcrypt.hash(updatePatientDto.password, environment.SALT_ROUND)
@@ -166,9 +169,7 @@ export class PatientService {
         throw new NotFoundException('patient-not-found');
       }
 
-      if (patient.registeredByDoctorId !== doctorId) {
-        throw new ForbiddenException('patient-not-owned-by-doctor');
-      }
+      this.assertOwnership(patient.registeredByDoctorId, scope);
 
       if (updatePatientDto.email || updatePatientDto.phone) {
         const existingUser = await tx.user.findFirst({
@@ -225,7 +226,7 @@ export class PatientService {
 
   async remove(
     id: string,
-    doctorId: string,
+    scope: PatientAccessScope,
   ): Promise<{ deleted: true; id: string }> {
     const patient = await this.prisma.patient.findUnique({
       where: { id },
@@ -235,9 +236,7 @@ export class PatientService {
       throw new NotFoundException('patient-not-found');
     }
 
-    if (patient.registeredByDoctorId !== doctorId) {
-      throw new ForbiddenException('patient-not-owned-by-doctor');
-    }
+    this.assertOwnership(patient.registeredByDoctorId, scope);
 
     await this.prisma.$transaction([
       this.prisma.user.delete({ where: { id: patient.userId } }),
@@ -249,7 +248,7 @@ export class PatientService {
 
   async getAntecedents(
     id: string,
-    doctorId: string,
+    scope: PatientAccessScope,
   ): Promise<PatientAntecedentsDto> {
     const patient = await this.prisma.patient.findUnique({
       where: { id },
@@ -259,9 +258,7 @@ export class PatientService {
       throw new NotFoundException('patient-not-found');
     }
 
-    if (patient.registeredByDoctorId !== doctorId) {
-      throw new ForbiddenException('patient-not-owned-by-doctor');
-    }
+    this.assertOwnership(patient.registeredByDoctorId, scope);
 
     return {
       patientId: patient.id,
@@ -276,7 +273,7 @@ export class PatientService {
   async updateAntecedents(
     id: string,
     updateAntecedentsDto: UpdatePatientAntecedentsDto,
-    doctorId: string,
+    scope: PatientAccessScope,
   ): Promise<PatientAntecedentsDto> {
     const patient = await this.prisma.patient.findUnique({
       where: { id },
@@ -286,9 +283,7 @@ export class PatientService {
       throw new NotFoundException('patient-not-found');
     }
 
-    if (patient.registeredByDoctorId !== doctorId) {
-      throw new ForbiddenException('patient-not-owned-by-doctor');
-    }
+    this.assertOwnership(patient.registeredByDoctorId, scope);
 
     const updatedPatient = await this.prisma.patient.update({
       where: { id },
@@ -394,5 +389,28 @@ export class PatientService {
       createdAt: patient.createdAt,
       updatedAt: patient.updatedAt,
     };
+  }
+
+  private buildAccessWhere(
+    scope: PatientAccessScope,
+  ): Record<string, never> | { registeredByDoctorId: string } {
+    if (scope.role === Role.ADMIN) {
+      return {};
+    }
+
+    return { registeredByDoctorId: scope.doctorId };
+  }
+
+  private assertOwnership(
+    registeredByDoctorId: string | null,
+    scope: PatientAccessScope,
+  ): void {
+    if (scope.role === Role.ADMIN) {
+      return;
+    }
+
+    if (registeredByDoctorId !== scope.doctorId) {
+      throw new ForbiddenException('patient-not-owned-by-doctor');
+    }
   }
 }

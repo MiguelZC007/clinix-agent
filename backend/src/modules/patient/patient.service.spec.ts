@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PatientService } from './patient.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
@@ -10,6 +14,8 @@ import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
 import { UpdatePatientAntecedentsDto } from './dto/update-patient-antecedents.dto';
 import { Gender } from 'src/core/enum/gender.enum';
+import { Role } from 'src/core/enum/role.enum';
+import type { PatientAccessScope } from './utils';
 
 describe('PatientService', () => {
   let service: PatientService;
@@ -41,6 +47,16 @@ describe('PatientService', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     user: mockUser,
+  };
+
+  const doctorScope: PatientAccessScope = {
+    role: Role.DOCTOR,
+    doctorId: 'doctor-uuid',
+  };
+
+  const adminScope: PatientAccessScope = {
+    role: Role.ADMIN,
+    doctorId: null,
   };
 
   beforeEach(async () => {
@@ -135,23 +151,28 @@ describe('PatientService', () => {
 
       await service.create(createDto, 'doctor-uuid');
 
-      expect(prisma.user.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            patient: expect.objectContaining({
-              create: expect.objectContaining({
-                registeredByDoctorId: 'doctor-uuid',
-              }),
-            }),
-          }),
-        }),
+      const createCalls = prisma.user.create.mock.calls as Array<
+        [
+          {
+            data?: {
+              patient?: {
+                create?: {
+                  registeredByDoctorId?: string;
+                };
+              };
+            };
+          },
+        ]
+      >;
+      const createCall = createCalls[0]?.[0];
+
+      expect(createCall?.data?.patient?.create?.registeredByDoctorId).toBe(
+        'doctor-uuid',
       );
     });
   });
 
   describe('findAll', () => {
-    const doctorId = 'doctor-uuid';
-
     it('debe retornar lista paginada de todos los pacientes', async () => {
       prisma.$transaction.mockImplementation((queries: Promise<unknown>[]) =>
         Promise.all(queries),
@@ -159,7 +180,7 @@ describe('PatientService', () => {
       prisma.patient.findMany.mockResolvedValue([mockPatient]);
       prisma.patient.count.mockResolvedValue(1);
 
-      const result = await service.findAll({}, doctorId);
+      const result = await service.findAll({}, doctorScope);
 
       expect(result.items).toHaveLength(1);
       expect(result.page).toBe(1);
@@ -180,7 +201,10 @@ describe('PatientService', () => {
       prisma.patient.findMany.mockResolvedValue([]);
       prisma.patient.count.mockResolvedValue(0);
 
-      const result = await service.findAll({ page: 1, pageSize: 10 }, doctorId);
+      const result = await service.findAll(
+        { page: 1, pageSize: 10 },
+        doctorScope,
+      );
 
       expect(result.items).toHaveLength(0);
       expect(result.total).toBe(0);
@@ -196,18 +220,38 @@ describe('PatientService', () => {
 
       const result = await service.findAll(
         { page: 1, pageSize: 10, search: 'Juan' },
-        doctorId,
+        doctorScope,
       );
+      const findManyCalls = prisma.patient.findMany.mock.calls as Array<
+        [
+          {
+            where?: {
+              user?: {
+                OR?: unknown[];
+              };
+            };
+          },
+        ]
+      >;
+      const findManyCall = findManyCalls[0]?.[0];
 
       expect(result.items).toHaveLength(1);
       expect(result.total).toBe(1);
+      expect(Array.isArray(findManyCall?.where?.user?.OR)).toBe(true);
+    });
+
+    it('debe omitir filtro de ownership para ADMIN', async () => {
+      prisma.$transaction.mockImplementation((queries: Promise<unknown>[]) =>
+        Promise.all(queries),
+      );
+      prisma.patient.findMany.mockResolvedValue([mockPatient]);
+      prisma.patient.count.mockResolvedValue(1);
+
+      await service.findAll({ page: 1, pageSize: 10 }, adminScope);
+
       expect(prisma.patient.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            user: expect.objectContaining({
-              OR: expect.any(Array),
-            }),
-          }),
+          where: {},
         }),
       );
     });
@@ -217,7 +261,7 @@ describe('PatientService', () => {
     it('debe retornar un paciente por ID', async () => {
       prisma.patient.findUnique.mockResolvedValue(mockPatient);
 
-      const result = await service.findOne('patient-uuid', 'doctor-uuid');
+      const result = await service.findOne('patient-uuid', doctorScope);
 
       expect(result).toBeDefined();
       expect(result.id).toBe('patient-uuid');
@@ -227,8 +271,30 @@ describe('PatientService', () => {
       prisma.patient.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.findOne('invalid-uuid', 'doctor-uuid'),
+        service.findOne('invalid-uuid', doctorScope),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('debe lanzar ForbiddenException si DOCTOR consulta paciente ajeno', async () => {
+      prisma.patient.findUnique.mockResolvedValue({
+        ...mockPatient,
+        registeredByDoctorId: 'other-doctor',
+      });
+
+      await expect(
+        service.findOne('patient-uuid', doctorScope),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('debe permitir acceso de ADMIN a paciente de otro doctor', async () => {
+      prisma.patient.findUnique.mockResolvedValue({
+        ...mockPatient,
+        registeredByDoctorId: 'other-doctor',
+      });
+
+      const result = await service.findOne('patient-uuid', adminScope);
+
+      expect(result.id).toBe('patient-uuid');
     });
   });
 
@@ -264,7 +330,7 @@ describe('PatientService', () => {
       const result = await service.update(
         'patient-uuid',
         updateDto,
-        'doctor-uuid',
+        doctorScope,
       );
 
       expect(result.name).toBe('Juan Carlos');
@@ -288,7 +354,7 @@ describe('PatientService', () => {
       prisma.patient.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.update('invalid-uuid', updateDto, 'doctor-uuid'),
+        service.update('invalid-uuid', updateDto, doctorScope),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -314,9 +380,36 @@ describe('PatientService', () => {
         service.update(
           'patient-uuid',
           { email: 'other@example.com' },
-          'doctor-uuid',
+          doctorScope,
         ),
       ).rejects.toThrow(ConflictException);
+    });
+
+    it('debe permitir actualización con ADMIN aunque el paciente sea de otro doctor', async () => {
+      prisma.$transaction.mockImplementation(
+        async (callback: (tx: unknown) => Promise<unknown>) => {
+          const tx = {
+            patient: {
+              findUnique: prisma.patient.findUnique,
+              update: prisma.patient.update,
+            },
+            user: {
+              findFirst: prisma.user.findFirst,
+            },
+          };
+          return callback(tx);
+        },
+      );
+      prisma.patient.findUnique.mockResolvedValue({
+        ...mockPatient,
+        registeredByDoctorId: 'other-doctor',
+      });
+      prisma.user.findFirst.mockResolvedValue(null);
+      prisma.patient.update.mockResolvedValue(mockPatient);
+
+      await service.update('patient-uuid', { name: 'Admin Edit' }, adminScope);
+
+      expect(prisma.patient.update).toHaveBeenCalled();
     });
   });
 
@@ -325,7 +418,7 @@ describe('PatientService', () => {
       prisma.patient.findUnique.mockResolvedValue(mockPatient);
       prisma.$transaction.mockResolvedValue([null, null] as never);
 
-      const result = await service.remove('patient-uuid', 'doctor-uuid');
+      const result = await service.remove('patient-uuid', doctorScope);
 
       expect(result).toEqual({ deleted: true, id: 'patient-uuid' });
     });
@@ -333,9 +426,20 @@ describe('PatientService', () => {
     it('debe lanzar NotFoundException si el paciente no existe', async () => {
       prisma.patient.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.remove('invalid-uuid', 'doctor-uuid'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.remove('invalid-uuid', doctorScope)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('debe lanzar ForbiddenException si DOCTOR intenta eliminar paciente ajeno', async () => {
+      prisma.patient.findUnique.mockResolvedValue({
+        ...mockPatient,
+        registeredByDoctorId: 'other-doctor',
+      });
+
+      await expect(service.remove('patient-uuid', doctorScope)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -343,10 +447,7 @@ describe('PatientService', () => {
     it('debe retornar los antecedentes del paciente', async () => {
       prisma.patient.findUnique.mockResolvedValue(mockPatient);
 
-      const result = await service.getAntecedents(
-        'patient-uuid',
-        'doctor-uuid',
-      );
+      const result = await service.getAntecedents('patient-uuid', doctorScope);
 
       expect(result.allergies).toEqual(['penicilina']);
       expect(result.medications).toEqual(['aspirina']);
@@ -356,8 +457,19 @@ describe('PatientService', () => {
       prisma.patient.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.getAntecedents('invalid-uuid', 'doctor-uuid'),
+        service.getAntecedents('invalid-uuid', doctorScope),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('debe permitir antecedentes con ADMIN para paciente ajeno', async () => {
+      prisma.patient.findUnique.mockResolvedValue({
+        ...mockPatient,
+        registeredByDoctorId: 'other-doctor',
+      });
+
+      const result = await service.getAntecedents('patient-uuid', adminScope);
+
+      expect(result.patientId).toBe('patient-uuid');
     });
   });
 
@@ -376,7 +488,7 @@ describe('PatientService', () => {
       const result = await service.updateAntecedents(
         'patient-uuid',
         updateAntecedentsDto,
-        'doctor-uuid',
+        doctorScope,
       );
 
       expect(result.allergies).toEqual(['penicilina', 'sulfas']);
@@ -389,9 +501,24 @@ describe('PatientService', () => {
         service.updateAntecedents(
           'invalid-uuid',
           updateAntecedentsDto,
-          'doctor-uuid',
+          doctorScope,
         ),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('debe lanzar ForbiddenException si DOCTOR actualiza antecedentes de paciente ajeno', async () => {
+      prisma.patient.findUnique.mockResolvedValue({
+        ...mockPatient,
+        registeredByDoctorId: 'other-doctor',
+      });
+
+      await expect(
+        service.updateAntecedents(
+          'patient-uuid',
+          updateAntecedentsDto,
+          doctorScope,
+        ),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

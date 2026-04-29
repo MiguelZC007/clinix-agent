@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { PatientController } from './patient.controller';
 import { PatientService } from './patient.service';
 import type { PatientListResultDto } from './patient.service';
@@ -9,6 +10,10 @@ import { PatientResponseDto } from './dto/patient-response.dto';
 import { PatientAntecedentsDto } from './dto/patient-antecedents.dto';
 import type { PatientListQueryDto } from './dto/patient-list-query.dto';
 import { Gender } from 'src/core/enum/gender.enum';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { ROLES_KEY } from 'src/core/decorators/roles.decorator';
+import { Role } from 'src/core/enum/role.enum';
+import type { PatientAccessScope } from './utils';
 
 describe('PatientController', () => {
   let controller: PatientController;
@@ -24,32 +29,36 @@ describe('PatientController', () => {
       (
         this: void,
         query: PatientListQueryDto,
-        doctorId: string,
+        scope: PatientAccessScope,
       ) => Promise<PatientListResultDto>
     >;
     findOne: jest.MockedFunction<
-      (this: void, id: string, doctorId: string) => Promise<PatientResponseDto>
+      (
+        this: void,
+        id: string,
+        scope: PatientAccessScope,
+      ) => Promise<PatientResponseDto>
     >;
     update: jest.MockedFunction<
       (
         this: void,
         id: string,
         dto: UpdatePatientDto,
-        doctorId: string,
+        scope: PatientAccessScope,
       ) => Promise<PatientResponseDto>
     >;
     remove: jest.MockedFunction<
       (
         this: void,
         id: string,
-        doctorId: string,
+        scope: PatientAccessScope,
       ) => Promise<{ deleted: true; id: string }>
     >;
     getAntecedents: jest.MockedFunction<
       (
         this: void,
         id: string,
-        doctorId: string,
+        scope: PatientAccessScope,
       ) => Promise<PatientAntecedentsDto>
     >;
     updateAntecedents: jest.MockedFunction<
@@ -57,7 +66,7 @@ describe('PatientController', () => {
         this: void,
         id: string,
         dto: UpdatePatientAntecedentsDto,
-        doctorId: string,
+        scope: PatientAccessScope,
       ) => Promise<PatientAntecedentsDto>
     >;
   };
@@ -130,6 +139,42 @@ describe('PatientController', () => {
       expect(service.create).toHaveBeenCalledWith(createDto, 'doctor-uuid');
       expect(result).toEqual(mockPatientResponse);
     });
+
+    it('debe restringir create solo a DOCTOR en metadata de método', () => {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        PatientController.prototype,
+        'create',
+      ) as TypedPropertyDescriptor<unknown> | undefined;
+
+      const createHandler = descriptor?.value;
+      const roles =
+        typeof createHandler === 'function'
+          ? (Reflect.getMetadata(ROLES_KEY, createHandler as object) as
+              | Role[]
+              | undefined)
+          : undefined;
+
+      expect(roles).toEqual([Role.DOCTOR]);
+    });
+  });
+
+  describe('class decorators', () => {
+    it('debe aplicar RolesGuard a nivel clase', () => {
+      const guards =
+        (Reflect.getMetadata(GUARDS_METADATA, PatientController) as
+          | unknown[]
+          | undefined) ?? [];
+
+      expect(guards).toContain(RolesGuard);
+    });
+
+    it('debe permitir solo ADMIN y DOCTOR', () => {
+      const roles = Reflect.getMetadata(ROLES_KEY, PatientController) as
+        | Role[]
+        | undefined;
+
+      expect(roles).toEqual([Role.ADMIN, Role.DOCTOR]);
+    });
   });
 
   describe('findAll', () => {
@@ -144,33 +189,57 @@ describe('PatientController', () => {
       service.findAll.mockResolvedValue(paginatedResult);
 
       const query = { page: 1, pageSize: 10 };
-      const mockUser = { doctor: { id: 'doctor-uuid' } };
+      const mockUser = {
+        role: Role.DOCTOR,
+        doctor: { id: 'doctor-uuid' },
+      };
       const result = await controller.findAll(query, mockUser);
 
-      expect(service.findAll).toHaveBeenCalledWith(query, 'doctor-uuid');
+      expect(service.findAll).toHaveBeenCalledWith(query, {
+        role: Role.DOCTOR,
+        doctorId: 'doctor-uuid',
+      });
       expect(result).toEqual(paginatedResult);
       expect(result.items).toHaveLength(1);
+    });
+
+    it('debe pasar scope admin al service para búsquedas globales', async () => {
+      const paginatedResult: PatientListResultDto = {
+        items: [mockPatientResponse],
+        page: 1,
+        pageSize: 10,
+        total: 1,
+        totalPages: 1,
+      };
+      service.findAll.mockResolvedValue(paginatedResult);
+
+      await controller.findAll({ page: 1, pageSize: 10 }, { role: Role.ADMIN });
+
+      expect(service.findAll).toHaveBeenCalledWith(
+        { page: 1, pageSize: 10 },
+        { role: Role.ADMIN, doctorId: null },
+      );
     });
   });
 
   describe('findOne', () => {
     it('debe llamar a patientService.findOne con el ID y doctorId', async () => {
-      const mockUser = { doctor: { id: 'doctor-uuid' } };
+      const mockUser = { role: Role.DOCTOR, doctor: { id: 'doctor-uuid' } };
       service.findOne.mockResolvedValue(mockPatientResponse);
 
       const result = await controller.findOne('patient-uuid', mockUser);
 
-      expect(service.findOne).toHaveBeenCalledWith(
-        'patient-uuid',
-        'doctor-uuid',
-      );
+      expect(service.findOne).toHaveBeenCalledWith('patient-uuid', {
+        role: Role.DOCTOR,
+        doctorId: 'doctor-uuid',
+      });
       expect(result).toEqual(mockPatientResponse);
     });
   });
 
   describe('update', () => {
     it('debe llamar a patientService.update con ID, DTO y doctorId', async () => {
-      const mockUser = { doctor: { id: 'doctor-uuid' } };
+      const mockUser = { role: Role.DOCTOR, doctor: { id: 'doctor-uuid' } };
       const updateDto: UpdatePatientDto = { name: 'Juan Carlos' };
       service.update.mockResolvedValue({
         ...mockPatientResponse,
@@ -183,18 +252,17 @@ describe('PatientController', () => {
         mockUser,
       );
 
-      expect(service.update).toHaveBeenCalledWith(
-        'patient-uuid',
-        updateDto,
-        'doctor-uuid',
-      );
+      expect(service.update).toHaveBeenCalledWith('patient-uuid', updateDto, {
+        role: Role.DOCTOR,
+        doctorId: 'doctor-uuid',
+      });
       expect(result.name).toBe('Juan Carlos');
     });
   });
 
   describe('remove', () => {
     it('debe llamar a patientService.remove con el ID y doctorId', async () => {
-      const mockUser = { doctor: { id: 'doctor-uuid' } };
+      const mockUser = { role: Role.DOCTOR, doctor: { id: 'doctor-uuid' } };
       service.remove.mockResolvedValue({
         deleted: true,
         id: 'patient-uuid',
@@ -202,32 +270,32 @@ describe('PatientController', () => {
 
       const result = await controller.remove('patient-uuid', mockUser);
 
-      expect(service.remove).toHaveBeenCalledWith(
-        'patient-uuid',
-        'doctor-uuid',
-      );
+      expect(service.remove).toHaveBeenCalledWith('patient-uuid', {
+        role: Role.DOCTOR,
+        doctorId: 'doctor-uuid',
+      });
       expect(result).toEqual({ deleted: true, id: 'patient-uuid' });
     });
   });
 
   describe('getAntecedents', () => {
     it('debe llamar a patientService.getAntecedents con el ID y doctorId', async () => {
-      const mockUser = { doctor: { id: 'doctor-uuid' } };
+      const mockUser = { role: Role.DOCTOR, doctor: { id: 'doctor-uuid' } };
       service.getAntecedents.mockResolvedValue(mockAntecedents);
 
       const result = await controller.getAntecedents('patient-uuid', mockUser);
 
-      expect(service.getAntecedents).toHaveBeenCalledWith(
-        'patient-uuid',
-        'doctor-uuid',
-      );
+      expect(service.getAntecedents).toHaveBeenCalledWith('patient-uuid', {
+        role: Role.DOCTOR,
+        doctorId: 'doctor-uuid',
+      });
       expect(result).toEqual(mockAntecedents);
     });
   });
 
   describe('updateAntecedents', () => {
     it('debe llamar a patientService.updateAntecedents con ID, DTO y doctorId', async () => {
-      const mockUser = { doctor: { id: 'doctor-uuid' } };
+      const mockUser = { role: Role.DOCTOR, doctor: { id: 'doctor-uuid' } };
       const updateDto: UpdatePatientAntecedentsDto = {
         allergies: ['penicilina', 'sulfas'],
       };
@@ -245,7 +313,7 @@ describe('PatientController', () => {
       expect(service.updateAntecedents).toHaveBeenCalledWith(
         'patient-uuid',
         updateDto,
-        'doctor-uuid',
+        { role: Role.DOCTOR, doctorId: 'doctor-uuid' },
       );
       expect(result.allergies).toEqual(['penicilina', 'sulfas']);
     });

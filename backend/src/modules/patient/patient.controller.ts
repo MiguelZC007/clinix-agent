@@ -9,6 +9,7 @@ import {
   Put,
   Query,
   ParseUUIDPipe,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -20,6 +21,8 @@ import {
 import type { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 import { User } from 'src/core/decorators/user.decorator';
 import { getDoctorId } from 'src/common/utils/get-doctor-id.util';
+import { Roles } from 'src/core/decorators/roles.decorator';
+import { Role } from 'src/core/enum/role.enum';
 import { PatientService, PatientListResultDto } from './patient.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
@@ -27,10 +30,14 @@ import { UpdatePatientAntecedentsDto } from './dto/update-patient-antecedents.dt
 import { PatientResponseDto } from './dto/patient-response.dto';
 import { PatientAntecedentsDto } from './dto/patient-antecedents.dto';
 import { PatientListQueryDto } from './dto/patient-list-query.dto';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { PatientAccessScope, resolvePatientAccessScope } from './utils';
 
 @ApiTags('Patients')
 @Controller('patients')
 @ApiBearerAuth('JWT-auth')
+@UseGuards(RolesGuard)
+@Roles(Role.ADMIN, Role.DOCTOR)
 export class PatientController {
   constructor(private readonly patientService: PatientService) {}
 
@@ -47,6 +54,7 @@ export class PatientController {
     status: 403,
     description: 'Solo doctores pueden registrar pacientes',
   })
+  @Roles(Role.DOCTOR)
   create(
     @Body() createPatientDto: CreatePatientDto,
     @User() user: unknown,
@@ -78,8 +86,7 @@ export class PatientController {
     @Query() query: PatientListQueryDto,
     @User() user: unknown,
   ): Promise<PatientListResultDto> {
-    const doctorId = getDoctorId(user);
-    return this.patientService.findAll(query, doctorId);
+    return this.patientService.findAll(query, this.resolveAccessScope(user));
   }
 
   @Get(':id')
@@ -95,8 +102,7 @@ export class PatientController {
     @Param('id', ParseUUIDPipe) id: string,
     @User() user: unknown,
   ): Promise<PatientResponseDto> {
-    const doctorId = getDoctorId(user);
-    return this.patientService.findOne(id, doctorId);
+    return this.patientService.findOne(id, this.resolveAccessScope(user));
   }
 
   @Patch(':id')
@@ -114,8 +120,11 @@ export class PatientController {
     @Body() updatePatientDto: UpdatePatientDto,
     @User() user: unknown,
   ): Promise<PatientResponseDto> {
-    const doctorId = getDoctorId(user);
-    return this.patientService.update(id, updatePatientDto, doctorId);
+    return this.patientService.update(
+      id,
+      updatePatientDto,
+      this.resolveAccessScope(user),
+    );
   }
 
   @Delete(':id')
@@ -137,8 +146,7 @@ export class PatientController {
     @Param('id', ParseUUIDPipe) id: string,
     @User() user: unknown,
   ): Promise<{ deleted: true; id: string }> {
-    const doctorId = getDoctorId(user);
-    return this.patientService.remove(id, doctorId);
+    return this.patientService.remove(id, this.resolveAccessScope(user));
   }
 
   @Get(':id/antecedents')
@@ -154,8 +162,10 @@ export class PatientController {
     @Param('id', ParseUUIDPipe) id: string,
     @User() user: unknown,
   ): Promise<PatientAntecedentsDto> {
-    const doctorId = getDoctorId(user);
-    return this.patientService.getAntecedents(id, doctorId);
+    return this.patientService.getAntecedents(
+      id,
+      this.resolveAccessScope(user),
+    );
   }
 
   @Put(':id/antecedents')
@@ -172,11 +182,14 @@ export class PatientController {
     @Body() updateAntecedentsDto: UpdatePatientAntecedentsDto,
     @User() user: unknown,
   ): Promise<PatientAntecedentsDto> {
-    const doctorId = getDoctorId(user);
     return this.patientService.updateAntecedents(
       id,
       updateAntecedentsDto,
-      doctorId,
+      this.resolveAccessScope(user),
     );
+  }
+
+  private resolveAccessScope(user: unknown): PatientAccessScope {
+    return resolvePatientAccessScope(user);
   }
 }
