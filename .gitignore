@@ -3,4 +3,5 @@ docs
 node_modules
 .windsurf/
 .checkout-runtime/
+.worktree-runtime/
 a.out
