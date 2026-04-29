@@ -2,5 +2,5 @@
 docs
 node_modules
 .windsurf/
-.worktree-runtime/
+.checkout-runtime/
 a.out

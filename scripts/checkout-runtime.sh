@@ -4,15 +4,15 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Uso:
-  ./scripts/worktree-runtime.sh <prepare|start|stop|restart|status> [worktree-path] [prod|dev]
+  ./scripts/checkout-runtime.sh <prepare|start|stop|restart|status> [checkout-path] [prod|dev]
 
 Ejemplos:
-  ./scripts/worktree-runtime.sh prepare ../worktrees/clinix-agent/feature/FE-12-e2e-admin prod
-  ./scripts/worktree-runtime.sh start ../worktrees/clinix-agent/feature/FE-12-e2e-admin
-  ./scripts/worktree-runtime.sh status ../worktrees/clinix-agent/feature/FE-12-e2e-admin
+  ./scripts/checkout-runtime.sh prepare . prod
+  ./scripts/checkout-runtime.sh start .
+  ./scripts/checkout-runtime.sh status .
 
 Notas:
-  - Entrada canónica para runtime PM2 por worktree.
+  - Entrada canónica para runtime PM2 por checkout.
   - Para frontend E2E, usar `prepare` y luego `start` en `prod`.
   - `prepare` valida runtime y chequea artefactos prod sin arrancar PM2.
   - Backend `pnpm test:e2e` actual corre in-process y NO requiere este wrapper.
@@ -20,7 +20,7 @@ EOF
 }
 
 ACTION="${1:-}"
-WORKTREE_PATH_INPUT="${2:-$(pwd)}"
+CHECKOUT_ROOT_INPUT="${2:-$(pwd)}"
 RUNTIME_MODE="${3:-prod}"
 
 if [[ "$ACTION" == "-h" || "$ACTION" == "--help" || -z "$ACTION" ]]; then
@@ -49,74 +49,74 @@ if ! command -v curl >/dev/null 2>&1; then
   exit 1
 fi
 
-WORKTREE_PATH="$(python3 - "$WORKTREE_PATH_INPUT" <<'PY'
+CHECKOUT_ROOT="$(python3 - "$CHECKOUT_ROOT_INPUT" <<'PY'
 import os
 import sys
 print(os.path.realpath(sys.argv[1]))
 PY
 )"
 
-if [[ ! -d "$WORKTREE_PATH" ]]; then
-  printf 'La worktree no existe: %s\n' "$WORKTREE_PATH" >&2
+if [[ ! -d "$CHECKOUT_ROOT" ]]; then
+  printf 'El checkout no existe: %s\n' "$CHECKOUT_ROOT" >&2
   exit 1
 fi
 
-REPO_ROOT="$(git -C "$WORKTREE_PATH" rev-parse --show-toplevel)"
-RUNTIME_FILE="$WORKTREE_PATH/.worktree-runtime/runtime.env"
+REPO_ROOT="$(git -C "$CHECKOUT_ROOT" rev-parse --show-toplevel)"
+RUNTIME_FILE="$CHECKOUT_ROOT/.checkout-runtime/runtime.env"
 
 if [[ ! -f "$RUNTIME_FILE" ]]; then
-  "$REPO_ROOT/scripts/setup-worktree-runtime.sh" "$WORKTREE_PATH"
+  "$REPO_ROOT/scripts/setup-checkout-runtime.sh" "$CHECKOUT_ROOT"
 fi
 
-"$REPO_ROOT/scripts/verify-worktree-runtime.sh" "$WORKTREE_PATH"
+"$REPO_ROOT/scripts/verify-checkout-runtime.sh" "$CHECKOUT_ROOT"
 
 set -a
 source "$RUNTIME_FILE"
 set +a
 
-APP_SCOPE="$(basename "$WORKTREE_PATH" | tr '/[:space:]' '-' | tr -cd '[:alnum:]-')"
+APP_SCOPE="$(basename "$CHECKOUT_ROOT" | tr '/[:space:]' '-' | tr -cd '[:alnum:]-')"
 BACKEND_APP_NAME="${APP_SCOPE}-backend"
 FRONTEND_APP_NAME="${APP_SCOPE}-frontend"
 BACKEND_READY_URL="http://127.0.0.1:${BACKEND_PORT}/api/docs"
 FRONTEND_READY_URL="http://127.0.0.1:${FRONTEND_PORT}/es/login"
 
 print_backend_prod_hint() {
-  printf 'Falta backend/dist/src/main.js en esta worktree.\n' >&2
+  printf 'Falta backend/dist/src/main.js en este checkout.\n' >&2
   printf 'El runtime prod usa `pnpm start:prod`, que necesita un build local vigente.\n' >&2
-  printf 'Regeneralo en ESTA worktree con: pnpm --filter backend build\n' >&2
+  printf 'Regeneralo en ESTE checkout con: pnpm --filter backend build\n' >&2
 }
 
 print_frontend_prod_hint() {
   local missing_path="$1"
 
   printf 'Artefacto prod de frontend incompleto o ausente: %s\n' "$missing_path" >&2
-  printf 'El runtime prod usa `next start` y necesita un `.next` completo y vigente para ESTA worktree.\n' >&2
-  printf 'Regeneralo en ESTA worktree con: pnpm --filter frontend build\n' >&2
+  printf 'El runtime prod usa `next start` y necesita un `.next` completo y vigente para ESTE checkout.\n' >&2
+  printf 'Regeneralo en ESTE checkout con: pnpm --filter frontend build\n' >&2
   printf 'Si cambiaste Next/config/dependencias o copiaste un `.next` viejo, el artefacto puede ser incompatible.\n' >&2
 }
 
 prod_artifacts_ready() {
-  [[ -f "$WORKTREE_PATH/backend/dist/src/main.js" ]] &&
-  [[ -f "$WORKTREE_PATH/frontend/.next/BUILD_ID" ]] &&
-  [[ -f "$WORKTREE_PATH/frontend/.next/build-manifest.json" ]] &&
-  [[ -f "$WORKTREE_PATH/frontend/.next/routes-manifest.json" ]]
+  [[ -f "$CHECKOUT_ROOT/backend/dist/src/main.js" ]] &&
+  [[ -f "$CHECKOUT_ROOT/frontend/.next/BUILD_ID" ]] &&
+  [[ -f "$CHECKOUT_ROOT/frontend/.next/build-manifest.json" ]] &&
+  [[ -f "$CHECKOUT_ROOT/frontend/.next/routes-manifest.json" ]]
 }
 
 check_prod_artifacts() {
-  if [[ ! -f "$WORKTREE_PATH/backend/dist/src/main.js" ]]; then
+  if [[ ! -f "$CHECKOUT_ROOT/backend/dist/src/main.js" ]]; then
     print_backend_prod_hint
     exit 1
   fi
 
-  if [[ ! -d "$WORKTREE_PATH/frontend/.next" ]]; then
-    print_frontend_prod_hint "$WORKTREE_PATH/frontend/.next"
+  if [[ ! -d "$CHECKOUT_ROOT/frontend/.next" ]]; then
+    print_frontend_prod_hint "$CHECKOUT_ROOT/frontend/.next"
     exit 1
   fi
 
   local frontend_required_files=(
-    "$WORKTREE_PATH/frontend/.next/BUILD_ID"
-    "$WORKTREE_PATH/frontend/.next/build-manifest.json"
-    "$WORKTREE_PATH/frontend/.next/routes-manifest.json"
+    "$CHECKOUT_ROOT/frontend/.next/BUILD_ID"
+    "$CHECKOUT_ROOT/frontend/.next/build-manifest.json"
+    "$CHECKOUT_ROOT/frontend/.next/routes-manifest.json"
   )
 
   local required_file
@@ -129,9 +129,9 @@ check_prod_artifacts() {
 }
 
 build_prod_artifacts() {
-  printf 'Artefactos prod ausentes o incompletos — iniciando build en %s...\n' "$WORKTREE_PATH"
-  (cd "$WORKTREE_PATH" && pnpm --filter backend build)
-  (cd "$WORKTREE_PATH" && pnpm --filter frontend build)
+  printf 'Artefactos prod ausentes o incompletos — iniciando build en %s...\n' "$CHECKOUT_ROOT"
+  (cd "$CHECKOUT_ROOT" && pnpm --filter backend build)
+  (cd "$CHECKOUT_ROOT" && pnpm --filter frontend build)
   printf 'Build prod completado.\n'
 }
 
@@ -141,12 +141,12 @@ prepare_runtime() {
       build_prod_artifacts
     fi
     check_prod_artifacts
-    printf 'Runtime verificado y artefactos prod listos para %s\n' "$WORKTREE_PATH"
-    printf 'Siguiente paso: ./scripts/worktree-runtime.sh start "%s" prod\n' "$WORKTREE_PATH"
+    printf 'Runtime verificado y artefactos prod listos para %s\n' "$CHECKOUT_ROOT"
+    printf 'Siguiente paso: ./scripts/checkout-runtime.sh start "%s" prod\n' "$CHECKOUT_ROOT"
     return 0
   fi
 
-  printf 'Runtime verificado para %s en modo %s\n' "$WORKTREE_PATH" "$RUNTIME_MODE"
+  printf 'Runtime verificado para %s en modo %s\n' "$CHECKOUT_ROOT" "$RUNTIME_MODE"
 }
 
 if [[ "$RUNTIME_MODE" == "prod" ]]; then
@@ -181,20 +181,20 @@ start_services() {
 
   npx pm2 start bash \
     --name "$BACKEND_APP_NAME" \
-    --cwd "$WORKTREE_PATH/backend" \
+    --cwd "$CHECKOUT_ROOT/backend" \
     --time \
     -- -lc "source '$RUNTIME_FILE'; $BACKEND_START_CMD"
 
   npx pm2 start bash \
     --name "$FRONTEND_APP_NAME" \
-    --cwd "$WORKTREE_PATH/frontend" \
+    --cwd "$CHECKOUT_ROOT/frontend" \
     --time \
     -- -lc "source '$RUNTIME_FILE'; $FRONTEND_START_CMD"
 
   wait_ready "$BACKEND_READY_URL" "Backend"
   wait_ready "$FRONTEND_READY_URL" "Frontend"
 
-  printf 'Servicios iniciados para %s\n' "$WORKTREE_PATH"
+  printf 'Servicios iniciados para %s\n' "$CHECKOUT_ROOT"
   printf 'Modo runtime: %s\n' "$RUNTIME_MODE"
   printf 'Backend PM2 app:  %s\n' "$BACKEND_APP_NAME"
   printf 'Frontend PM2 app: %s\n' "$FRONTEND_APP_NAME"
@@ -204,13 +204,13 @@ start_services() {
 
 stop_services() {
   delete_processes
-  printf 'Servicios PM2 detenidos para %s\n' "$WORKTREE_PATH"
+  printf 'Servicios PM2 detenidos para %s\n' "$CHECKOUT_ROOT"
   printf 'Backend app: %s\n' "$BACKEND_APP_NAME"
   printf 'Frontend app: %s\n' "$FRONTEND_APP_NAME"
 }
 
 show_status() {
-  printf 'Worktree: %s\n' "$WORKTREE_PATH"
+  printf 'Checkout: %s\n' "$CHECKOUT_ROOT"
   printf 'Modo runtime: %s\n' "$RUNTIME_MODE"
   printf 'Backend app: %s\n' "$BACKEND_APP_NAME"
   printf 'Frontend app: %s\n' "$FRONTEND_APP_NAME"

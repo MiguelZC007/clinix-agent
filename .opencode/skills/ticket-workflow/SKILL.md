@@ -1,7 +1,7 @@
 ---
 name: ticket-workflow
 description: >
-  Automated ticket workflow: select from Trello, create a git worktree, run SDD, test, judge, commit, PR, verify completion, then clean up.
+  Automated ticket workflow: select from Trello, create or switch to a dedicated branch, run SDD, test, judge, commit, PR, verify completion, then hand off cleanly.
   Trigger: When working on any Trello ticket, feature branch, or task from the product backlog.
 license: Apache-2.0
 metadata:
@@ -21,8 +21,8 @@ metadata:
 | Rule | File | When |
 |------|------|------|
 | ticket-router | `.opencode/rules/ticket-router.md` | Before creating branches — determines which package(s) are affected |
-| worktree-first | `.opencode/rules/worktree-first.md` | Before ANY ticket work — blocks work outside a dedicated worktree |
-| worktree-runtime-gate | `.opencode/rules/worktree-runtime-gate.md` | Before tests, commit, and PR — ensures env/ports/runtime are ready |
+| branch-first | `.opencode/rules/branch-first.md` | Before ANY ticket work — blocks work outside the dedicated ticket branch |
+| checkout-runtime-gate | `.opencode/rules/checkout-runtime-gate.md` | Before tests, commit, and PR — ensures env/ports/runtime are ready |
 | pre-commit-gate | `.opencode/rules/pre-commit-gate.md` | Before every commit — mandatory test/build gate |
 | commit-language | `.opencode/rules/commit-language.md` | Before every commit — conventional commits in Spanish only |
 | test-mandate | `.opencode/rules/test-mandate.md` | When writing code — every function needs tests |
@@ -30,7 +30,7 @@ metadata:
 ## Overview
 
 ```
-Trello (Backlog) → In Progress → Worktree → SDD → Tests → Judge → Commit → PR → Verify → Cleanup
+Trello (Backlog) → In Progress → Branch Checkout → SDD → Tests → Judge → Commit → PR → Verify → Handoff
 ```
 
 This skill defines the **mandatory pipeline** that every ticket must follow. No shortcuts.
@@ -61,49 +61,42 @@ This skill defines the **mandatory pipeline** that every ticket must follow. No 
 3. Add comment to card: "🚀 Started — Branch: feature/{TICKET-ID}"
 ```
 
-### 1.3 Create Worktree BEFORE Any Real Work
+### 1.3 Create or Switch to the Ticket Branch BEFORE Any Real Work
 
 ```bash
-# For EACH affected product repo (backend and/or frontend)
-
-# 1. Ensure develop is current in the main repo checkout
+# 1. Ensure develop is current in the monorepo root checkout
 git checkout develop
 git pull origin develop
 
 # 2. Create branch name
 BRANCH_NAME="feature/{TICKET-ID}-{short-description}"
 
-# 3. Create dedicated worktree folder OUTSIDE the product repo
-WORKTREE_PATH="../worktrees/{repo-name}/${BRANCH_NAME}"
-mkdir -p "../worktrees/{repo-name}"
+# 3. Create or switch to the branch from the root repo checkout
+git checkout -b "$BRANCH_NAME"
 
-# 4. Create the worktree from develop with the new branch
-git worktree add -b "$BRANCH_NAME" "$WORKTREE_PATH" develop
+# 4. Allocate runtime for this active checkout
+./scripts/setup-checkout-runtime.sh "$(pwd)"
 
-# 5. Allocate runtime for this worktree
-./scripts/setup-worktree-runtime.sh "$WORKTREE_PATH"
-
-# 6. Perform ALL implementation work from the worktree
-git -C "$WORKTREE_PATH" status
+# 5. Perform ALL implementation work from this checkout
+git status
 
 # Example: feature/ADMIN-2-auditoria-cambios
 # Example: feature/FE-6-admin-ui
 ```
 
-**Critical worktree rule:**
-- Worktree creation is the FIRST mandatory step after ticket selection. Do not analyze, edit, test, or commit ticket code before the worktree exists.
-- Once the worktree is created, all code changes, tests, commits, pushes, and PR commands MUST run from the worktree path.
-- Once the worktree exists, do NOT go back to the main checkout for the same ticket, not even for a quick inspection or a single command.
-- Do NOT implement the ticket in the main checkout.
-- Keep one worktree per active ticket branch.
-- Do NOT reuse one worktree for multiple tickets.
+**Critical branch rule:**
+- Branch checkout is the FIRST mandatory step after ticket selection. Do not analyze, edit, test, or commit ticket code before the branch is active.
+- Once the branch is active, all code changes, tests, commits, pushes, and PR commands MUST run from that same checkout.
+- Do NOT implement the ticket on `develop`.
+- Keep one ticket scope per active branch.
+- Do not create additional git worktrees for ticket execution in this project.
 
-**Runtime rule per worktree:**
-- Every worktree must reuse the SAME shared database connection.
-- Every worktree must get its OWN free backend/frontend ports.
-- The runtime setup must search free ports so worktrees never collide.
+**Runtime rule per active ticket checkout:**
+- Every active ticket checkout must reuse the SAME shared database connection.
+- Every active ticket checkout must get its OWN free backend/frontend ports.
+- The runtime setup must search free ports so active branches never collide with other local runs.
 - If env variables or ports are missing, STOP and fix runtime before testing.
-- If `setup-worktree-runtime.sh` and `verify-worktree-runtime.sh` did not pass in that exact worktree, STOP: no tests, no commit, no push, no PR.
+- If `setup-checkout-runtime.sh` and `verify-checkout-runtime.sh` did not pass for that exact checkout, STOP: no tests, no commit, no push, no PR.
 
 **Branch naming convention:**
 | Prefix | Meaning | Example |
@@ -121,7 +114,7 @@ git -C "$WORKTREE_PATH" status
 | ADMIN-3, PDF-2, SYNC-3 | frontend only |
 | ADMIN-1+frontend, cross-cutting | backend + frontend |
 
-Important: this project uses ONE git repository at the monorepo root. Create ONE branch and ONE worktree per ticket from the root repo, then run package-specific commands inside `backend/` or `frontend/` as needed.
+Important: this project uses ONE git repository at the monorepo root. Create ONE branch per ticket from the root repo, then run package-specific commands inside `backend/` or `frontend/` as needed from that same checkout.
 
 ---
 
@@ -206,54 +199,56 @@ describe('AdminService', () => {
 
 **MANDATORY: Run ALL project tests to verify nothing is broken.**
 
-Before any test command, validate runtime in the worktree:
+Before any test command, validate runtime in the active checkout:
 
 ```bash
-./scripts/setup-worktree-runtime.sh "$WORKTREE_PATH"
-./scripts/verify-worktree-runtime.sh "$WORKTREE_PATH"
+TARGET_ROOT="$(pwd)"
+./scripts/setup-checkout-runtime.sh "$TARGET_ROOT"
+./scripts/verify-checkout-runtime.sh "$TARGET_ROOT"
 ```
 
 ```bash
 # Backend — ALL tests
-cd "$WORKTREE_PATH"
+cd "$TARGET_ROOT"
 pnpm test                    # unit tests
 pnpm test:e2e               # e2e tests (if applicable)
 
 # Frontend — ALL tests
-cd "$WORKTREE_PATH"
+cd "$TARGET_ROOT"
 pnpm test                    # unit tests
 pnpm test:integration        # integration tests (if applicable)
 ```
 
-### 3.2.1 Frontend E2E Runtime (PM2 background, per worktree)
+### 3.2.1 Frontend E2E Runtime (PM2 background, per active checkout)
 
-For Playwright frontend E2E, DO NOT rely on Playwright-managed dev mode. Use PM2 background services tied to the ticket worktree.
+For Playwright frontend E2E, DO NOT rely on Playwright-managed dev mode. Use PM2 background services tied to the active ticket checkout.
 
 ```bash
-# Always from monorepo root, targeting the SAME ticket worktree
-./scripts/setup-worktree-runtime.sh "$WORKTREE_PATH"
-./scripts/verify-worktree-runtime.sh "$WORKTREE_PATH"
-./scripts/worktree-runtime.sh prepare "$WORKTREE_PATH" prod
+# Always from monorepo root, targeting the SAME ticket checkout
+TARGET_ROOT="$(pwd)"
+./scripts/setup-checkout-runtime.sh "$TARGET_ROOT"
+./scripts/verify-checkout-runtime.sh "$TARGET_ROOT"
+./scripts/checkout-runtime.sh prepare "$TARGET_ROOT" prod
 
-# Start backend + frontend in background with PM2 (worktree-scoped names)
-./scripts/worktree-runtime.sh start "$WORKTREE_PATH" prod
+# Start backend + frontend in background with PM2 (checkout-scoped names)
+./scripts/checkout-runtime.sh start "$TARGET_ROOT" prod
 
-# Run frontend E2E from the ticket worktree
-set -a; source "$WORKTREE_PATH/.worktree-runtime/runtime.env"; set +a
-cd "$WORKTREE_PATH/frontend"
+# Run frontend E2E from the ticket checkout
+set -a; source "$TARGET_ROOT/.checkout-runtime/runtime.env"; set +a
+cd "$TARGET_ROOT/frontend"
 E2E_PORT="$FRONTEND_PORT" E2E_BASE_URL="http://127.0.0.1:$FRONTEND_PORT" NEXT_PUBLIC_API_URL="http://127.0.0.1:$BACKEND_PORT/v1" pnpm test:e2e
 
-# Mandatory cleanup: stop/delete ONLY this worktree's PM2 processes
-cd "$WORKTREE_PATH"
-./scripts/worktree-runtime.sh stop "$WORKTREE_PATH"
+# Mandatory cleanup: stop/delete ONLY this checkout's PM2 processes
+cd "$TARGET_ROOT"
+./scripts/checkout-runtime.sh stop "$TARGET_ROOT"
 ```
 
 **PM2 safety rules:**
 - Start services only for frontend E2E runs that need browser runtime.
-- Run `worktree-runtime.sh prepare "$WORKTREE_PATH" prod` before `start` so missing or stale prod artifacts fail early.
-- Process names MUST be unique per worktree/ticket and never generic.
+- Run `checkout-runtime.sh prepare "$TARGET_ROOT" prod` before `start` so missing or stale prod artifacts fail early.
+- Process names MUST be unique per checkout/ticket and never generic.
 - Never run `pm2 delete all` or global cleanup commands.
-- Cleanup must remove only the PM2 processes created for that specific worktree.
+- Cleanup must remove only the PM2 processes created for that specific checkout.
 - If PM2 start/readiness fails, STOP and fix runtime before E2E, commit, push, or PR.
 
 **If ANY test fails:**
@@ -264,34 +259,35 @@ cd "$WORKTREE_PATH"
 
 **If runtime is not ready:**
 1. STOP
-2. Fix env variables, generated clients, services, and free ports inside the worktree
+2. Fix env variables, generated clients, services, and free ports inside the active checkout
 3. Re-run runtime verification
 4. Only then run tests again
 
-**Absolute worktree enforcement:**
-- No dedicated worktree = no analysis, no edits, no tests, no commit.
-- No verified runtime in that worktree = no tests, no commit, no push, no PR.
-- The main checkout is coordination-only once the ticket worktree exists.
+**Absolute checkout enforcement:**
+- No active ticket branch = no analysis, no edits, no tests, no commit.
+- No verified runtime in that checkout = no tests, no commit, no push, no PR.
+- Do not create a separate git worktree for this flow; use the active repo checkout only.
 
 ### 3.3 Verification Gate
 
 ```bash
 # Backend
-cd "$WORKTREE_PATH"
+TARGET_ROOT="$(pwd)"
+cd "$TARGET_ROOT"
 pnpm test
 pnpm test:e2e               # if applicable
 npx prisma generate         # if Prisma/schema changed
 
 # Frontend
-cd "$WORKTREE_PATH"
+cd "$TARGET_ROOT"
 pnpm test
 pnpm test:integration       # if applicable
 pnpm lint
 ```
 
-**Important:** use the verification commands required by the affected package(s) and ticket, but do NOT delete the worktree until all mandatory checks are green.
+**Important:** use the verification commands required by the affected package(s) and ticket, but do NOT proceed to handoff until all mandatory checks are green.
 
-**Hard gate:** if you cannot run the required tests successfully from the worktree with the correct runtime, you MUST NOT create a commit and MUST NOT create a PR.
+**Hard gate:** if you cannot run the required tests successfully from the active checkout with the correct runtime, you MUST NOT create a commit and MUST NOT create a PR.
 
 ---
 
@@ -378,7 +374,7 @@ gga --pr-mode
 
 **Examples:**
 ```bash
-cd "$WORKTREE_PATH"
+cd "$(pwd)"
 git add .
 git commit -m "feat(ADMIN-2): agrega interceptor y vista de auditoría"
 git commit -m "fix(T-3): valida ventana de 24 horas para WhatsApp"
@@ -386,10 +382,10 @@ git commit -m "refactor(T-5): extrae ToolExecutorService de OpenaiService"
 git commit -m "test(ADMIN-1): agrega pruebas unitarias del servicio admin"
 ```
 
-### 5.2 Push Branch from the Worktree
+### 5.2 Push Branch from the Active Checkout
 
 ```bash
-cd "$WORKTREE_PATH"
+cd "$(pwd)"
 git push -u origin feature/{TICKET-ID}-{description}
 ```
 
@@ -407,7 +403,7 @@ git push -u origin feature/{TICKET-ID}-{description}
 ### Using GitHub CLI
 
 ```bash
-cd "$WORKTREE_PATH"
+cd "$(pwd)"
 gh pr create \
   --base develop \
   --head feature/{TICKET-ID}-{description} \
@@ -429,38 +425,30 @@ EOF
 )"
 ```
 
-### 6.1 Confirm Ticket Completion Before Cleanup
+### 6.1 Confirm Ticket Completion Before Handoff
 
-Do NOT remove the worktree yet. First verify ALL of the following:
+Before closing the ticket, verify ALL of the following:
 
 1. The implementation for the ticket scope is complete
 2. Mandatory tests/checks are green
-3. Worktree runtime was prepared correctly with shared DB and dedicated free ports
-3. Judgment Day (or equivalent review gate) passed
-4. Commit exists on the ticket branch
-5. Branch was pushed successfully
-6. PR was created successfully and the PR URL was captured
-7. Trello card was updated with status/comment/PR link as appropriate
+3. Runtime was prepared correctly with shared DB and dedicated free ports for the active checkout
+4. Judgment Day (or equivalent review gate) passed
+5. Commit exists on the ticket branch
+6. Branch was pushed successfully
+7. PR was created successfully and the PR URL was captured
+8. Trello card was updated with status/comment/PR link as appropriate
 
 Only after this confirmation is the ticket considered correctly completed for handoff.
 
-## Phase 7: Worktree Cleanup (ONLY AFTER SUCCESSFUL HANDOFF)
+## Phase 7: Checkout Hygiene (ONLY AFTER SUCCESSFUL HANDOFF)
 
-### 7.1 Remove Worktree Safely
+### 7.1 Cleanup Rules
 
-```bash
-# Run from the main checkout, not inside the worktree
-git worktree remove "../worktrees/{repo-name}/feature/{TICKET-ID}-{description}"
-git worktree prune
-```
-
-### 7.2 Cleanup Rules
-
-- NEVER remove the worktree before the branch is pushed and the PR exists
-- NEVER remove the worktree if tests/review are still failing
-- NEVER commit or open a PR if runtime verification failed in the worktree
-- If the user asks to continue iterating on the same ticket, keep the worktree
-- If both packages are involved, verify the required checks for each package from the SAME ticket worktree before cleanup
+- NEVER switch away from the ticket branch before the branch is pushed and the PR exists
+- NEVER mark the handoff complete if tests/review are still failing
+- NEVER commit or open a PR if runtime verification failed in the active checkout
+- If the user asks to continue iterating on the same ticket, keep working on the same branch checkout
+- If both packages are involved, verify the required checks for each package from the SAME ticket branch checkout before handoff
 
 ### Move Trello Card to Done (after PR merge)
 
@@ -539,14 +527,14 @@ import { AuditLogQueryDto } from '../audit/dto/audit-log-query.dto';
 
 ```
 Ticket requires backend changes?
-├── YES → Branch in backend
+├── YES → Work in `backend/` from the active monorepo branch checkout
 └── NO → Skip backend
 
 Ticket requires frontend changes?
-├── YES → Branch in frontend
+├── YES → Work in `frontend/` from the active monorepo branch checkout
 └── NO → Skip frontend
 
-Both? → Branch in BOTH repos with SAME branch name
+Both? → Use the SAME monorepo branch checkout and touch both packages as needed
 ```
 
 ---
@@ -571,27 +559,27 @@ source .env.trello
 curl -s "https://api.trello.com/1/boards/$TRELLO_DEFAULT_BOARD_ID/lists?key=$TRELLO_API_KEY&token=$TRELLO_TOKEN&fields=name&filter=open"
 
 # Git (desde la raíz del monorepo)
-./scripts/new-ticket-worktree.sh feature/{TICKET-ID}-{desc} develop
-git -C "../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}" add .
-git -C "../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}" commit -m "feat({TICKET-ID}): descripción en español"
-git -C "../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}" push -u origin feature/{TICKET-ID}-{desc}
-# Only after PR exists and handoff is verified:
-./scripts/remove-ticket-worktree.sh feature/{TICKET-ID}-{desc}
+git checkout develop
+git pull origin develop
+git checkout -b feature/{TICKET-ID}-{desc}
+git add .
+git commit -m "feat({TICKET-ID}): descripción en español"
+git push -u origin feature/{TICKET-ID}-{desc}
 
 # Backend tests
-cd ../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}
+cd /path/to/clinix-agent
 pnpm test
 pnpm test:e2e
 npx prisma generate
 
 # Frontend tests
-cd ../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}
+cd /path/to/clinix-agent
 pnpm test
 pnpm test:integration
 pnpm lint
 
 # PR
-cd ../worktrees/{repo-name}/feature/{TICKET-ID}-{desc}
+cd /path/to/clinix-agent
 gh pr create --base develop --head feature/{TICKET-ID}-{desc}
 ```
 

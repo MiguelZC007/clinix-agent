@@ -25,10 +25,10 @@ Dual-app medical assistant: conversational AI for doctors via WhatsApp + web das
 | When | Load | File |
 |------|------|------|
 | Starting any ticket | ticket-router | `.opencode/rules/ticket-router.md` |
-| Starting any ticket | worktree-first | `.opencode/rules/worktree-first.md` |
+| Starting any ticket | branch-first | `.opencode/rules/branch-first.md` |
 | Before ANY commit | pre-commit-gate | `.opencode/rules/pre-commit-gate.md` |
 | Before ANY commit | commit-language | `.opencode/rules/commit-language.md` |
-| Before tests/commit/PR in a worktree | worktree-runtime-gate | `.opencode/rules/worktree-runtime-gate.md` |
+| Before tests/commit/PR for the active ticket checkout | checkout-runtime-gate | `.opencode/rules/checkout-runtime-gate.md` |
 | Before frontend or backend E2E tests | e2e-runtime-prep | `.opencode/rules/e2e-runtime-prep.md` |
 | Writing new code | test-mandate | `.opencode/rules/test-mandate.md` |
 | Writing backend tests | backend-testing | `.opencode/rules/backend-testing.md` |
@@ -71,14 +71,14 @@ cd frontend && pnpm test && pnpm lint && pnpm build
 - **No `rm` destructive:** Use minimal, reversible changes
 - **Git repo boundary:** `clinix-agent/` is the REAL git repository root for the product.
 - **Monorepo multipaquete:** `backend/` and `frontend/` are packages/apps inside the SAME git repo, not separate git repositories.
-- Work from `clinix-agent/` for shared context, docs, backlog, `.opencode`, `.atl`, Trello coordination, git branches, worktrees, commits, pushes, and PRs.
-- Use package directories (`backend/`, `frontend/`) as execution targets for package-specific commands, but treat git history, branches, PRs, and worktrees as root-repo concerns.
+- Work from `clinix-agent/` for shared context, docs, backlog, `.opencode`, `.atl`, Trello coordination, git branches, commits, pushes, and PRs.
+- Use package directories (`backend/`, `frontend/`) as execution targets for package-specific commands, but treat git history, branches, and PRs as root-repo concerns.
 - Never assume `backend/` or `frontend/` are standalone git repos.
-- **Worktree first:** todo ticket debe crear primero una worktree dedicada antes de analizar, editar, testear o commitear.
-- **Worktree strict mode:** una vez seleccionado el ticket, TODO el trabajo real debe hacerse desde la worktree dedicada. Nada de "solo mirar rápido" o "solo correr un comando" desde el checkout principal.
-- **Runtime por worktree:** todas las worktrees comparten la misma base de datos, pero cada una debe usar puertos propios y libres para frontend/backend.
-- **No tests, no commit, no PR:** si la worktree no puede ejecutar las pruebas requeridas con su entorno listo, se bloquea el handoff.
-- **No runtime verificado, no push:** si `setup-worktree-runtime.sh` y `verify-worktree-runtime.sh` no pasaron en ESA worktree, no se puede testear, commitear, pushear ni abrir PR.
+- **Branch first:** todo ticket debe crear o cambiar a su branch dedicada antes de analizar, editar, testear o commitear.
+- **Checkout estricto:** una vez seleccionado el ticket, TODO el trabajo real debe hacerse desde el checkout activo de esa branch. Nada de mezclar cambios en otra branch o fuera del repo raíz.
+- **Runtime por branch/ticket:** cada branch activa debe usar puertos propios y libres para frontend/backend aunque comparta la misma base de datos local.
+- **No tests, no commit, no PR:** si la branch activa no puede ejecutar las pruebas requeridas con su entorno listo, se bloquea el handoff.
+- **No runtime verificado, no push:** si `setup-checkout-runtime.sh` y `verify-checkout-runtime.sh` no pasaron para ESE checkout/branch activo, no se puede testear, commitear, pushear ni abrir PR.
 
 ## Architecture
 
