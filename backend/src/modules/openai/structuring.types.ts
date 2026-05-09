@@ -20,6 +20,7 @@ export interface StructureAnamnesisError {
   code: string;
   message: string;
   fields?: string[];
+  details?: Array<{ path: string; message: string }>;
 }
 
 export interface StructureAnamnesisResult {

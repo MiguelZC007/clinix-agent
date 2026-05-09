@@ -9,7 +9,10 @@ import {
 } from './clinic-history.service';
 import { CreateClinicHistoryDto } from './dto/create-clinic-history.dto';
 import { FindAllClinicHistoriesQueryDto } from './dto/find-all-clinic-histories-query.dto';
-import { ClinicHistoryResponseDto } from './dto/clinic-history-response.dto';
+import {
+  ClinicHistoryListItemDto,
+  ClinicHistoryResponseDto,
+} from './dto/clinic-history-response.dto';
 
 describe('ClinicHistoryController', () => {
   let controller: ClinicHistoryController;
@@ -108,6 +111,30 @@ describe('ClinicHistoryController', () => {
     updatedAt: new Date(),
   };
 
+  const mockClinicHistoryListItem: ClinicHistoryListItemDto = {
+    id: 'clinic-history-uuid',
+    patientId: 'patient-uuid',
+    doctorId: 'doctor-uuid',
+    specialtyId: 'specialty-uuid',
+    specialtyCode: 1,
+    appointmentId: 'appointment-uuid',
+    consultationReason: 'Dolor de cabeza',
+    patient: {
+      id: 'patient-uuid',
+      patientNumber: 1,
+      name: 'Juan',
+      lastName: 'Pérez',
+    },
+    doctor: {
+      id: 'doctor-uuid',
+      name: 'María',
+      lastName: 'González',
+      specialty: 'Cardiología',
+    },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
   beforeEach(async () => {
     const mockService: MockClinicHistoryService = {
       create: jest.fn(),
@@ -171,7 +198,7 @@ describe('ClinicHistoryController', () => {
     it('debe llamar a clinicHistoryService.findAll con query y retornar forma paginada', async () => {
       const query: FindAllClinicHistoriesQueryDto = { page: 1, pageSize: 10 };
       const paginated: ClinicHistoryListResultDto = {
-        items: [mockClinicHistoryResponse],
+        items: [mockClinicHistoryListItem],
         page: 1,
         pageSize: 10,
         total: 1,
