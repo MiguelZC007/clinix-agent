@@ -33,9 +33,10 @@ type SchemaNode = {
 @Injectable()
 export class StructuringService {
   private readonly openai: OpenAI;
+  private readonly model = environment.OPENAI_MODEL;
   private readonly semanticValidator = new AnamnesisSemanticValidator();
 
-  constructor(private readonly model = environment.OPENAI_MODEL) {
+  constructor() {
     this.openai = new OpenAI({ apiKey: environment.OPENAI_API_KEY });
   }
 
