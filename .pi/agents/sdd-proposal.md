@@ -1,6 +1,7 @@
 ---
 name: sdd-proposal
 description: Write an SDD proposal for an approved change idea.
+model: openai-codex/gpt-5.4
 tools: read, grep, glob, write, edit
 inheritProjectContext: true
 ---

@@ -1,6 +1,7 @@
 ---
 name: sdd-apply
 description: Implement SDD tasks with strict TDD evidence and review workload guard.
+model: opencode-go/mimo-v2.5
 tools: read, grep, glob, edit, write, bash
 inheritProjectContext: true
 ---

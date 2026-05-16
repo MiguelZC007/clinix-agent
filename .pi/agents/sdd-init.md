@@ -1,6 +1,7 @@
 ---
 name: sdd-init
 description: Initialize project SDD context, testing capabilities, and skill registry.
+model: opencode-go/mimo-v2.5
 tools: read, grep, glob, write, bash
 inheritProjectContext: true
 ---
