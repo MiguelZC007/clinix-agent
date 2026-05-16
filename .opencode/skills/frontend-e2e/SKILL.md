@@ -1,297 +1,51 @@
 ---
 name: frontend-e2e
-description: >
-  End-to-End testing strategy for Next.js 15 + React 19 frontend using Playwright CLI.
-  Covers user flows, CRUD operations, authentication, and API mocking.
-  Trigger: When writing E2E tests for frontend, needing test coverage, or verifying UI flows.
+description: "Trigger: frontend E2E tests, Playwright flows, UI validation, or browser runtime checks. Apply stable Next.js E2E patterns."
 license: Apache-2.0
 metadata:
   author: clinix-agent
-  version: "1.0"
+  version: "1.1"
 ---
 
-## When to Use
+## Activation Contract
 
-- Writing E2E tests for user flows
-- Testing CRUD operations in admin panels
-- Verifying authentication flows
-- Testing form validation
-- Debugging test failures
-- Generating test code with Playwright codegen
+Load this skill when creating, modifying, debugging, or verifying Playwright E2E tests under `frontend/e2e/` or browser-facing flows in the Next.js frontend.
 
-## Testing Pyramid
+## Hard Rules
 
-```
-        /\
-       /E2E\      ← Playwright (this skill)
-      /------\
-     /Integ  \    ← MSW handlers
-    /----------\
-   /   Unit     \ ← Vitest (hooks, utils)
-  /--------------\
-```
+- Load `.opencode/rules/frontend-e2e.md` and `.opencode/rules/e2e-runtime-prep.md` before E2E work.
+- Use the active ticket checkout runtime; do not rely on ad-hoc servers or another branch's ports.
+- Prefer `data-testid`, user-visible assertions, Page Object Model helpers, and independent tests.
+- Never use arbitrary long waits; wait for selectors, responses, load state, or explicit readiness.
+- Preserve Playwright artifacts on failure and do not mark complete until the required E2E checks pass.
 
-## Critical Patterns
+## Decision Gates
 
-### 1. Test Structure (POM)
+| Need                       | Action                                                   |
+| -------------------------- | -------------------------------------------------------- |
+| Critical happy path        | Add/update smoke E2E                                     |
+| CRUD/admin workflow        | Use Page Object Model under `frontend/e2e/pages/`        |
+| Error/empty/loading states | Mock API responses with Playwright routing               |
+| Auth-dependent flow        | Use persisted auth setup and documented test credentials |
+| Flaky runtime              | Stop and fix checkout runtime before re-running          |
 
-```typescript
-// e2e/pages/admin/doctors-page.ts
-export class DoctorsPage {
-  readonly page: Page;
+## Execution Steps
 
-  constructor(page: Page) {
-    this.page = page;
-  }
+1. Prepare and verify checkout runtime from the monorepo root.
+2. Start only checkout-scoped services when the test needs browser runtime.
+3. Write or update Playwright tests with stable selectors and isolated data.
+4. Run the narrow spec, then the required frontend E2E command from `frontend/`.
+5. Inspect trace/video/screenshot artifacts for failures before changing app code.
+6. Stop only this checkout's runtime services after E2E execution.
 
-  async goto() {
-    await this.page.goto('/admin/doctors');
-  }
+## Output Contract
 
-  async createDoctor(data: CreateDoctorDto) {
-    await this.page.click('[data-testid="btn-new-doctor"]');
-    await this.page.fill('[data-testid="input-name"]', data.name);
-    await this.page.fill('[data-testid="input-email"]', data.email);
-    await this.page.click('[data-testid="btn-submit"]');
-  }
+Return affected specs/pages, runtime command evidence, E2E command results, artifact locations for failures, and any skipped or flaky scenario.
 
-  async getDoctorRow(email: string) {
-    return this.page.locator(`tr:has-text("${email}")`);
-  }
-}
+## References
 
-// e2e/admin-doctors.spec.ts
-test.describe('Admin Doctors', () => {
-  let doctorsPage: DoctorsPage;
-
-  test.beforeEach(async ({ page }) => {
-    doctorsPage = new DoctorsPage(page);
-    await doctorsPage.goto();
-  });
-
-  test('should create doctor', async () => {
-    await doctorsPage.createDoctor({ name: 'Dr. Test', email: 'test@test.com' });
-    const row = await doctorsPage.getDoctorRow('test@test.com');
-    await expect(row).toBeVisible();
-  });
-});
-```
-
-### 2. Wait Strategies (NO ARBITRARY WAITS)
-
-```typescript
-// BAD
-await page.waitForTimeout(5000);
-
-// GOOD
-await expect(page.locator('table')).toBeVisible();
-await page.waitForResponse('**/api/doctors');
-await page.waitForLoadState('networkidle');
-
-// React hydration
-await page.waitForFunction(() => document.readyState === 'complete');
-```
-
-### 3. Form Testing
-
-```typescript
-test('should validate form', async ({ page }) => {
-  await page.goto('/admin/doctors/new');
-  
-  // Empty submit
-  await page.click('[data-testid="btn-submit"]');
-  await expect(page.locator('text=El nombre es requerido')).toBeVisible();
-  
-  // Valid data
-  await page.fill('[data-testid="input-name"]', 'Dr. Valid');
-  await page.fill('[data-testid="input-email"]', 'valid@test.com');
-  await page.click('[data-testid="btn-submit"]');
-  await expect(page.locator('text=El nombre es requerido')).not.toBeVisible();
-});
-```
-
-### 4. API Mocking (Isolated Tests)
-
-```typescript
-test('should show empty state', async ({ page }) => {
-  await page.route('**/v1/doctors*', route => {
-    route.fulfill({
-      status: 200,
-      body: JSON.stringify({ data: [], total: 0 }),
-    });
-  });
-
-  await page.goto('/admin/doctors');
-  await expect(page.locator('text=No hay médicos')).toBeVisible();
-});
-```
-
-## Test File Structure
-
-```
-frontend/
-├── e2e/
-│   ├── pages/
-│   │   └── admin/
-│   │       └── doctors-page.ts      ← Page Object Model
-│   ├── fixtures/
-│   │   └── doctor.fixture.ts        ← Test data
-│   ├── auth.setup.ts                ← Auth persistence
-│   ├── smoke/
-│   │   └── home.spec.ts             ← Critical paths
-│   └── admin/
-│       └── doctors.spec.ts          ← CRUD tests
-├── playwright.config.ts
-└── .env.test                        ← Test env vars
-```
-
-## Commands
-
-```bash
-# Run all E2E tests
-cd frontend && pnpm test:e2e
-
-# Run specific file
-pnpm test:e2e -- admin-doctors.spec.ts
-
-# Run single test by name
-pnpm test:e2e -- -g "should create doctor"
-
-# headed mode (see browser)
-pnpm test:e2e -- --headed
-
-# Debug mode
-pnpm test:e2e -- --debug
-
-# Generate code
-pnpm playwright codegen http://localhost:3003
-
-# View last report
-npx playwright show-report
-
-# View video from failure
-ls test-results/*/videos/
-
-# Trace viewer
-npx playwright show-trace test-results/*/trace.zip
-```
-
-## Best Practices
-
-### Use data-testid (Stable Selectors)
-
-```typescript
-// Component
-<Input data-testid="input-email" />
-
-// Test
-await page.fill('[data-testid="input-email"]', email);
-
-// Avoid brittle selectors
-// BAD: .MuiButton-root.MuiButton-contained
-// GOOD: [data-testid="btn-submit"]
-```
-
-### React Hydration Waits
-
-```typescript
-// Next.js needs time for hydration
-test('should handle hydration', async ({ page }) => {
-  await page.goto('/admin/doctors');
-  await page.waitForFunction(() => document.readyState === 'complete');
-  await page.waitForTimeout(500); // Small buffer for React
-});
-```
-
-### Independent Tests
-
-```typescript
-// Each test should work in isolation
-test.beforeEach(async ({ page }) => {
-  // Reset state, login if needed, navigate
-  await page.goto('/admin/doctors');
-});
-
-// No order dependency
-```
-
-## Playwright Config
-
-```typescript
-// playwright.config.ts
-import { defineConfig, devices } from '@playwright/test';
-
-export default defineConfig({
-  testDir: './e2e',
-  fullyParallel: true,
-  retries: process.env.CI ? 2 : 0,
-  
-  use: {
-    baseURL: 'http://localhost:3003',
-    trace: 'on-first-retry',
-    video: 'on',         // Videos for all tests
-    screenshot: 'only-on-failure',
-  },
-
-  projects: [
-    {
-      name: 'setup',
-      testMatch: /.*\.setup\.ts/,
-    },
-    {
-      name: 'chromium',
-      use: { 
-        ...devices['Desktop Chrome'],
-        storageState: 'playwright/.auth/user.json',
-      },
-      dependencies: ['setup'],
-    },
-  ],
-
-  webServer: {
-    command: 'pnpm dev',
-    url: 'http://localhost:3003',
-    reuseExistingServer: true,
-  },
-});
-```
-
-## Artifacts
-
-| Artifact | Location | When |
-|----------|----------|------|
-| Videos | `test-results/*/video.webm` | Always |
-| Screenshots | `test-results/*/screenshots/` | On failure |
-| Traces | `test-results/*/trace.zip` | On retry |
-| Reports | `playwright-report/` | After run |
-
-## Verification Checklist
-
-Before marking complete:
-- [ ] External runtime prepared with `./scripts/checkout-runtime.sh prepare "$TARGET_ROOT" prod` from the active ticket checkout
-- [ ] `pnpm test:e2e` passes locally
-- [ ] `pnpm test:e2e` passes in CI
-- [ ] No hardcoded waits (>1000ms)
-- [ ] Uses `data-testid` for selectors
-- [ ] Tests use Page Object Model
-- [ ] Mocks for error scenarios
-- [ ] Tests are independent
-- [ ] React hydration handled
-- [ ] Auth state persisted
-
-## Test Categories
-
-| Category | Pattern | Purpose |
-|----------|---------|---------|
-| Smoke | `smoke/*.spec.ts` | Critical paths|
-| Auth | `auth/*.spec.ts` | Login/logout |
-| CRUD | `admin/*.spec.ts` | CRUD operations |
-| Mock | `*.mock.spec.ts` | Isolated API tests |
-
-## Resources
-
-- **Rule**: `.opencode/rules/frontend-e2e.md` ← Full patterns & best practices
-- **Runtime flow**: `setup-checkout-runtime.sh` → `verify-checkout-runtime.sh` → `checkout-runtime.sh prepare ... prod` → `checkout-runtime.sh start ... prod` from the active ticket checkout
-- **Dev Skill**: `.opencode/skills/dev-services/SKILL.md` ← Start/stop servers
-- Playwright docs: https://playwright.dev
-- Best practices: https://playwright.dev/docs/best-practices
+- `.opencode/rules/frontend-e2e.md`
+- `.opencode/rules/e2e-runtime-prep.md`
+- `.opencode/rules/checkout-runtime-gate.md`
+- `frontend/playwright.config.ts`
+- `frontend/e2e/TEST_CREDENTIALS.md`
