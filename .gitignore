@@ -6,4 +6,8 @@ node_modules
 .worktree-runtime/
 a.out
 # Local Pi runtime state
-.atl/
+.atl
+.pi-lens/
+
+progress.md
+context.md

@@ -1,265 +1,49 @@
 ---
 name: backend-testing
-description: >
-  Comprehensive testing strategy for NestJS backend with Prisma.
-  Covers unit tests, integration tests, and API tests using Jest.
-  Trigger: When writing tests for backend, needing test coverage, or verifying backend code quality.
+description: "Trigger: backend unit, integration, or API tests. Apply NestJS + Prisma Jest testing and TDD rules."
 license: Apache-2.0
 metadata:
   author: clinix-agent
-  version: "1.0"
+  version: "1.1"
 ---
 
-## When to Use
+## Activation Contract
 
-- Writing unit tests for services, controllers, guards
-- Writing integration tests for repositories
-- Writing API tests for endpoints
-- Checking test coverage
-- Debugging test failures
-- Setting up testing infrastructure
+Load this skill when writing, changing, debugging, or verifying backend tests in `backend/`, including NestJS services/controllers, Prisma-backed repositories, guards, and HTTP/API tests.
 
-## Testing Pyramid
+## Hard Rules
 
-```
-        /\
-       /E2E\      ← Playwright (frontend tests call backend)
-      /------\
-     / Integ \    ← Repository tests (test/**/*.repository.spec.ts)
-    /----------\
-   /   Unit     \ ← Service/Controller tests (src/**/*.spec.ts)
-  /--------------\
-```
+- Load `.opencode/rules/backend-testing.md` and `.opencode/rules/test-mandate.md` before writing testable backend code.
+- Use TDD for new behavior: RED test first, GREEN minimum implementation, then refactor.
+- Keep unit tests isolated with mocked dependencies; use real DB only for integration/API tests.
+- Do not mark complete with failing tests, skipped tests, `it.only`, or uncovered critical paths.
+- Before commit/PR, obey dev runtime gates from `.opencode/rules/dev-runtime-gate.md`.
 
-## Critical Patterns
+## Decision Gates
 
-### 1. Unit Tests (FAST, ms)
+| Target                              | Test type     | Location                               |
+| ----------------------------------- | ------------- | -------------------------------------- |
+| Service/controller/guard logic      | Unit          | `backend/src/**/*.spec.ts`             |
+| Prisma repository/data behavior     | Integration   | `backend/test/**/*.repository.spec.ts` |
+| HTTP endpoint behavior              | API/e2e       | `backend/test/**/*.e2e-spec.ts`        |
+| Auth, validation, DB writes, errors | Critical path | Add success and failure cases          |
 
-Test isolated logic with mocked dependencies.
+## Execution Steps
 
-```typescript
-// src/modules/doctors/doctors.service.spec.ts
-describe('DoctorsService', () => {
-  let service: DoctorsService;
-  let prisma: jest.Mocked<PrismaService>;
+1. Identify the behavior and expected failures before touching implementation.
+2. Write focused Jest cases with clear `describe()`/`it()` names.
+3. Mock Prisma/services for unit tests; clean DB state for integration tests.
+4. Run the narrow test first, then the required backend suite from `backend/`.
+5. If Prisma changed, run generation and include that evidence.
+6. Remove temporary debugging, skipped tests, and brittle assertions.
 
-  beforeEach(async () => {
-    prisma = mockPrisma();
-    service = new DoctorsService(prisma);
-  });
+## Output Contract
 
-  describe('create()', () => {
-    it('should create doctor', async () => {
-      prisma.doctor.create.mockResolvedValue(mockDoctor);
-      const result = await service.create(dto);
-      expect(result).toEqual(mockDoctor);
-    });
+Return test files changed, behavior covered, commands run, pass/fail evidence, coverage notes for critical paths, and any remaining risk.
 
-    it('should throw ConflictException if email exists', async () => {
-      prisma.doctor.findUnique.mockResolvedValue(mockDoctor);
-      await expect(service.create(dto))
-        .rejects.toThrow(ConflictException);
-    });
-  });
-});
-```
+## References
 
-### 2. Integration Tests (SLOW, seconds)
-
-Test DB interactions with real database.
-
-```typescript
-// test/modules/doctors/doctors.repository.spec.ts
-describe('DoctorsRepository (Integration)', () => {
-  let repo: DoctorsRepository;
-  let prisma: PrismaService;
-
-  beforeAll(async () => {
-    const module = await Test.createTestingModule({
-      providers: [DoctorsRepository, PrismaService],
-    }).compile();
-
-    repo = module.get(DoctorsRepository);
-    prisma = module.get(PrismaService);
-  });
-
-  afterAll(async () => {
-    await prisma.$disconnect();
-  });
-
-  beforeEach(async () => {
-    await prisma.doctor.deleteMany(); // Clean slate
-  });
-
-  it('should create and find doctor', async () => {
-    const created = await repo.create(dto);
-    const found = await repo.findById(created.id);
-    expect(found).toEqual(created);
-  });
-});
-```
-
-### 3. API Tests (SLOW, seconds)
-
-Test HTTP endpoints with supertest.
-
-```typescript
-// test/modules/doctors/doctors.e2e-spec.ts
-describe('Doctors API (e2e)', () => {
-  let app: INestApplication;
-
-  beforeAll(async () => {
-    const module = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = module.createNestApplication();
-    await app.init();
-  });
-
-  afterAll(async () => {
-    await app.close();
-  });
-
-  describe('GET /v1/doctors', () => {
-    it('should return paginated list', () => {
-      return request(app.getHttpServer())
-        .get('/v1/doctors?page=1&limit=10')
-        .expect(200)
-        .expect((res) => {
-          expect(res.body.data).toBeInstanceOf(Array);
-        });
-    });
-  });
-});
-```
-
-## Test Structure
-
-```
-backend/
-├── src/
-│   └── modules/
-│       └── doctors/
-│           ├── doctors.service.ts
-│           ├── doctors.service.spec.ts    ← Unit test
-│           ├── doctors.controller.ts
-│           └── doctors.controller.spec.ts
-├── test/
-│   └── modules/
-│       └── doctors/
-│           ├── doctors.repository.spec.ts ← Integration
-│           └── doctors.e2e-spec.ts         ← API test
-```
-
-## Mock Factories
-
-### Prisma Mock
-
-```typescript
-// test/utils/mock-prisma.ts
-export const mockPrisma = () => ({
-  doctor: {
-    create: jest.fn(),
-    findMany: jest.fn(),
-    findUnique: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-  },
-  $transaction: jest.fn((cb) => cb(mockPrisma())),
-  $connect: jest.fn(),
-  $disconnect: jest.fn(),
-});
-```
-
-### Service Mock
-
-```typescript
-// test/utils/mock-service.ts
-export const mockDoctorsService = () => ({
-  create: jest.fn(),
-  findAll: jest.fn(),
-  findOne: jest.fn(),
-  update: jest.fn(),
-  remove: jest.fn(),
-});
-```
-
-## Commands
-
-```bash
-# Run all unit tests
-pnpm test
-
-# Run specific file
-pnpm test -- doctors.service.spec.ts
-
-# Run with watch mode
-pnpm test:watch
-
-# Run with coverage
-pnpm test:cov
-
-# Run e2e tests
-pnpm test:e2e
-
-# Run single e2e test
-pnpm test:e2e -- doctors.e2e-spec.ts
-
-# Debug specific test
-node --inspect-brk ./node_modules/.bin/jest --runInBand doctors.service.spec.ts
-```
-
-## Coverage Requirements
-
-| Type | Minimum | Critical Paths |
-|------|---------|----------------|
-| Lines | 80% | 95% |
-| Branches | 75% | 90% |
-| Functions | 80% | 95% |
-
-### Critical Paths (95% required)
-- Authentication/Authorization
-- Data validation
-- Database operations
-- Error handling
-
-## TDD Workflow
-
-1. **Red** → Write failing test
-2. **Green** → Write minimum code to pass
-3. **Refactor** → Clean up
-
-```bash
-# Start TDD cycle
-pnpm test:watch -- --testPathPattern=doctors.service
-```
-
-## Test Naming Convention
-
-```typescript
-describe('ClassName', () => {
-  describe('methodName()', () => {
-    it('should handle happy path', () => {});
-    it('should throw on invalid input', () => {});
-    it('should handle edge case X', () => {});
-    it('should return Y when Z', () => {});
-  });
-});
-```
-
-## Verification Checklist
-
-Before marking complete:
-- [ ] `pnpm test` passes
-- [ ] `pnpm test:e2e` passes
-- [ ] Coverage meets minimum
-- [ ] Critical paths have 95%+
-- [ ] No `xit` or `it.only`
-- [ ] All edge cases covered
-
-## Resources
-
-- **Rule**: `.opencode/rules/backend-testing.md` ← Full testing patterns
-- Jest docs: https://jestjs.io/docs/getting-started
-- NestJS testing: https://docs.nestjs.com/fundamentals/testing
+- `.opencode/rules/backend-testing.md`
+- `.opencode/rules/test-mandate.md`
+- `.opencode/rules/dev-runtime-gate.md`
+- `backend/package.json`

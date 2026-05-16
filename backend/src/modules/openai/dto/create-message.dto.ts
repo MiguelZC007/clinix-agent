@@ -37,4 +37,3 @@ export class CreateMessageDto {
   @MaxLength(5000, { message: 'content no puede exceder 5000 caracteres' })
   content: string;
 }
-

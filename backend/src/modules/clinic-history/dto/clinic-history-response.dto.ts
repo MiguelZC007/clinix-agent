@@ -342,7 +342,8 @@ export class ClinicHistoryResponseDto {
   specialtyCode?: number;
 
   @ApiProperty({
-    description: 'ID de la cita asociada; null cuando la historia no está vinculada a una cita',
+    description:
+      'ID de la cita asociada; null cuando la historia no está vinculada a una cita',
     example: '550e8400-e29b-41d4-a716-446655440003',
     required: false,
     nullable: true,
@@ -418,7 +419,8 @@ export class ClinicHistoryResponseDto {
   updatedAt: Date;
 
   @ApiProperty({
-    description: 'Advertencias de validación de prescripción (ej. conflictos con medicamentos actuales del paciente)',
+    description:
+      'Advertencias de validación de prescripción (ej. conflictos con medicamentos actuales del paciente)',
     type: [PrescriptionConflict],
     required: false,
   })

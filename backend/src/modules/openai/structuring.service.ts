@@ -33,10 +33,11 @@ type SchemaNode = {
 @Injectable()
 export class StructuringService {
   private readonly openai: OpenAI;
-  private readonly model = environment.OPENAI_MODEL;
+  private readonly model: string;
   private readonly semanticValidator = new AnamnesisSemanticValidator();
 
-  constructor() {
+  constructor(model = environment.OPENAI_MODEL) {
+    this.model = model;
     this.openai = new OpenAI({ apiKey: environment.OPENAI_API_KEY });
   }
 
@@ -199,7 +200,9 @@ export class StructuringService {
       });
 
       if (error.children?.length) {
-        details.push(...this.flattenValidationErrors(error.children, currentPath));
+        details.push(
+          ...this.flattenValidationErrors(error.children, currentPath),
+        );
       }
     });
 
@@ -210,7 +213,11 @@ export class StructuringService {
     payload: Record<string, unknown>,
   ): string[] {
     const violations = new Set<string>();
-    const visit = (value: unknown, currentPath: string, policyPath: string): void => {
+    const visit = (
+      value: unknown,
+      currentPath: string,
+      policyPath: string,
+    ): void => {
       if (typeof value === 'string') {
         if (
           this.isNoReferidoEquivalent(value) &&
@@ -229,11 +236,13 @@ export class StructuringService {
       }
 
       if (value && typeof value === 'object') {
-        Object.entries(value as Record<string, unknown>).forEach(([key, nested]) => {
-          const nextCurrentPath = currentPath ? `${currentPath}.${key}` : key;
-          const nextPolicyPath = policyPath ? `${policyPath}.${key}` : key;
-          visit(nested, nextCurrentPath, nextPolicyPath);
-        });
+        Object.entries(value as Record<string, unknown>).forEach(
+          ([key, nested]) => {
+            const nextCurrentPath = currentPath ? `${currentPath}.${key}` : key;
+            const nextPolicyPath = policyPath ? `${policyPath}.${key}` : key;
+            visit(nested, nextCurrentPath, nextPolicyPath);
+          },
+        );
       }
     };
 
@@ -322,7 +331,11 @@ export class StructuringService {
       if (schema.items) {
         payload.forEach((item, index) => {
           errors.push(
-            ...this.validateAgainstSchema(item, schema.items as SchemaNode, `${path}[${index}]`),
+            ...this.validateAgainstSchema(
+              item,
+              schema.items as SchemaNode,
+              `${path}[${index}]`,
+            ),
           );
         });
       }

@@ -15,7 +15,8 @@ test.describe('Dashboard', () => {
     const hasContent = await page.locator('p.text-lg, h1, h2, .text-2xl').first().isVisible().catch(() => false);
     
     // Either welcome message or page header should be visible
-    expect(hasContent || await page.content().length > 100).toBe(true);
+    const pageContent = await page.content();
+    expect(hasContent || pageContent.length > 100).toBe(true);
   });
 
   test('should display stats cards', async ({ page }) => {

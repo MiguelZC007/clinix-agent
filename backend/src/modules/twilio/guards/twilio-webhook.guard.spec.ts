@@ -26,7 +26,9 @@ type RequestLike = {
   body: Record<string, string>;
 };
 
-function createMockContext(overrides: Partial<RequestLike> = {}): ExecutionContext {
+function createMockContext(
+  overrides: Partial<RequestLike> = {},
+): ExecutionContext {
   const request: RequestLike = {
     header: (name: string) =>
       name === 'X-Twilio-Signature' ? 'signature-abc' : undefined,
@@ -53,7 +55,7 @@ function createMockContext(overrides: Partial<RequestLike> = {}): ExecutionConte
 describe('TwilioWebhookGuard', () => {
   let guard: TwilioWebhookGuard;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     mockEnv.TWILIO_AUTH_TOKEN = 'test-auth-token';
     guard = new TwilioWebhookGuard();
     validateRequest.mockReset();

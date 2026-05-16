@@ -70,7 +70,10 @@ export class PrismaExceptionFilter implements ExceptionFilter {
       return { status: HttpStatus.BAD_REQUEST, code: ErrorCode.BAD_REQUEST };
     }
 
-    return { status: HttpStatus.INTERNAL_SERVER_ERROR, code: ErrorCode.UNKNOWN };
+    return {
+      status: HttpStatus.INTERNAL_SERVER_ERROR,
+      code: ErrorCode.UNKNOWN,
+    };
   }
 
   private getErrorInfoFromCode(code: string): { type: string; title: string } {

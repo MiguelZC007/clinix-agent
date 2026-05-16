@@ -1,6 +1,7 @@
 ---
 name: sdd-onboard
 description: Guide a user through a complete SDD cycle on a small real project change.
+model: opencode-go/mimo-v2.5
 tools: read, grep, glob, write, edit, bash
 inheritProjectContext: true
 ---

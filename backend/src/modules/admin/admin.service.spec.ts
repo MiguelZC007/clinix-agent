@@ -1,8 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -309,7 +307,11 @@ describe('AdminService', () => {
       });
 
       const dto: UpdateDoctorDto = { licenseNumber: 'MP-99999' };
-      const result = await service.updateDoctor('doctor-uuid', dto, 'admin-uuid');
+      const result = await service.updateDoctor(
+        'doctor-uuid',
+        dto,
+        'admin-uuid',
+      );
 
       expect(result).toBeDefined();
       expect(prisma.doctor.update).toHaveBeenCalled();
@@ -347,14 +349,23 @@ describe('AdminService', () => {
 
   describe('deactivateDoctor()', () => {
     it('debe desactivar un doctor exitosamente', async () => {
-      const activeDoctor = { ...mockDoctor, user: { ...mockUser, isActive: true } };
-      const deactivatedDoctor = { ...mockDoctor, user: { ...mockUser, isActive: false } };
+      const activeDoctor = {
+        ...mockDoctor,
+        user: { ...mockUser, isActive: true },
+      };
+      const deactivatedDoctor = {
+        ...mockDoctor,
+        user: { ...mockUser, isActive: false },
+      };
       prisma.doctor.findUnique
         .mockResolvedValueOnce(activeDoctor)
         .mockResolvedValueOnce(deactivatedDoctor);
       prisma.doctor.update.mockResolvedValue(deactivatedDoctor);
 
-      const result = await service.deactivateDoctor('doctor-uuid', 'admin-uuid');
+      const result = await service.deactivateDoctor(
+        'doctor-uuid',
+        'admin-uuid',
+      );
 
       expect(result.isActive).toBe(false);
       expect(prisma.doctor.update).toHaveBeenCalledWith({
@@ -394,8 +405,14 @@ describe('AdminService', () => {
 
   describe('activateDoctor()', () => {
     it('debe reactivar un doctor exitosamente', async () => {
-      const inactiveDoctor = { ...mockDoctor, user: { ...mockUser, isActive: false } };
-      const activatedDoctor = { ...mockDoctor, user: { ...mockUser, isActive: true } };
+      const inactiveDoctor = {
+        ...mockDoctor,
+        user: { ...mockUser, isActive: false },
+      };
+      const activatedDoctor = {
+        ...mockDoctor,
+        user: { ...mockUser, isActive: true },
+      };
       prisma.doctor.findUnique
         .mockResolvedValueOnce(inactiveDoctor)
         .mockResolvedValueOnce(activatedDoctor);

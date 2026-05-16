@@ -244,11 +244,10 @@ describe('AppointmentController', () => {
     it('debe llamar a appointmentService.findByPatient con patientId y doctorId', async () => {
       service.findByPatient.mockResolvedValue([mockAppointmentResponse]);
 
-      const result =
-        await patientAppointmentsController.findByPatient(
-          'patient-uuid',
-          mockUser,
-        );
+      const result = await patientAppointmentsController.findByPatient(
+        'patient-uuid',
+        mockUser,
+      );
 
       expect(service.findByPatient).toHaveBeenCalledWith(
         'patient-uuid',

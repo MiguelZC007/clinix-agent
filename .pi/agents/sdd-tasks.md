@@ -1,6 +1,7 @@
 ---
 name: sdd-tasks
 description: Break SDD design/specs into implementation tasks with review workload forecast.
+model: opencode-go/mimo-v2.5
 tools: read, grep, glob, write, edit
 inheritProjectContext: true
 ---

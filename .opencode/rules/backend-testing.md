@@ -16,11 +16,11 @@ Comprehensive testing strategy for NestJS backend with Prisma. Unit + Integratio
 
 ## Test Types
 
-| Type | Location | Purpose | Speed |
-|------|----------|---------|-------|
-| Unit | `src/**/*.spec.ts` | Test isolated logic | ms |
+| Type        | Location                | Purpose              | Speed   |
+| ----------- | ----------------------- | -------------------- | ------- |
+| Unit        | `src/**/*.spec.ts`      | Test isolated logic  | ms      |
 | Integration | `test/**/*.e2e-spec.ts` | Test DB interactions | seconds |
-| API | `test/**/*.e2e-spec.ts` | Test HTTP endpoints | seconds |
+| API         | `test/**/*.e2e-spec.ts` | Test HTTP endpoints  | seconds |
 
 ## Unit Test Patterns (Jest)
 
@@ -28,7 +28,7 @@ Comprehensive testing strategy for NestJS backend with Prisma. Unit + Integratio
 
 ```typescript
 // src/modules/doctors/doctors.service.spec.ts
-describe('DoctorsService', () => {
+describe("DoctorsService", () => {
   let service: DoctorsService;
   let prisma: jest.Mocked<PrismaService>;
   let auditLog: jest.Mocked<AuditLogService>;
@@ -47,17 +47,18 @@ describe('DoctorsService', () => {
     auditLog = module.get(AuditLogService);
   });
 
-  describe('create()', () => {
-    it('should create doctor with valid data', async () => {
+  describe("create()", () => {
+    it("should create doctor with valid data", async () => {
       prisma.doctor.create.mockResolvedValue(mockDoctor);
       const result = await service.create(createDoctorDto);
       expect(result).toEqual(mockDoctor);
     });
 
-    it('should throw ConflictException if email exists', async () => {
+    it("should throw ConflictException if email exists", async () => {
       prisma.doctor.findUnique.mockResolvedValue(mockDoctor);
-      await expect(service.create(createDoctorDto))
-        .rejects.toThrow(ConflictException);
+      await expect(service.create(createDoctorDto)).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 });
@@ -67,24 +68,22 @@ describe('DoctorsService', () => {
 
 ```typescript
 // src/modules/doctors/doctors.controller.spec.ts
-describe('DoctorsController', () => {
+describe("DoctorsController", () => {
   let controller: DoctorsController;
   let service: jest.Mocked<DoctorsService>;
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
       controllers: [DoctorsController],
-      providers: [
-        { provide: DoctorsService, useValue: mockDoctorsService() },
-      ],
+      providers: [{ provide: DoctorsService, useValue: mockDoctorsService() }],
     }).compile();
 
     controller = module.get(DoctorsController);
     service = module.get(DoctorsService);
   });
 
-  describe('POST /doctors', () => {
-    it('should return 201 with created doctor', async () => {
+  describe("POST /doctors", () => {
+    it("should return 201 with created doctor", async () => {
       service.create.mockResolvedValue(mockDoctor);
       const result = await controller.create(createDoctorDto);
       expect(result).toEqual(mockDoctor);
@@ -97,16 +96,16 @@ describe('DoctorsController', () => {
 
 ```typescript
 // src/common/guards/roles.guard.spec.ts
-describe('RolesGuard', () => {
-  it('should allow access for matching role', () => {
-    const context = mockExecutionContext({ user: { role: 'admin' } });
-    const guard = new RolesGuard('admin');
+describe("RolesGuard", () => {
+  it("should allow access for matching role", () => {
+    const context = mockExecutionContext({ user: { role: "admin" } });
+    const guard = new RolesGuard("admin");
     expect(guard.canActivate(context)).toBe(true);
   });
 
-  it('should deny access for non-matching role', () => {
-    const context = mockExecutionContext({ user: { role: 'doctor' } });
-    const guard = new RolesGuard('admin');
+  it("should deny access for non-matching role", () => {
+    const context = mockExecutionContext({ user: { role: "doctor" } });
+    const guard = new RolesGuard("admin");
     expect(guard.canActivate(context)).toBe(false);
   });
 });
@@ -118,7 +117,7 @@ describe('RolesGuard', () => {
 
 ```typescript
 // test/modules/doctors/doctors.repository.spec.ts
-describe('DoctorsRepository (Integration)', () => {
+describe("DoctorsRepository (Integration)", () => {
   let repository: DoctorsRepository;
   let prisma: PrismaService;
 
@@ -139,7 +138,7 @@ describe('DoctorsRepository (Integration)', () => {
     await prisma.doctor.deleteMany(); // Clean slate
   });
 
-  it('should create and find doctor', async () => {
+  it("should create and find doctor", async () => {
     const created = await repository.create(createDoctorDto);
     const found = await repository.findById(created.id);
     expect(found).toEqual(created);
@@ -153,7 +152,7 @@ describe('DoctorsRepository (Integration)', () => {
 
 ```typescript
 // test/modules/doctors/doctors.e2e-spec.ts
-describe('Doctors API (e2e)', () => {
+describe("Doctors API (e2e)", () => {
   let app: INestApplication;
   let prisma: PrismaService;
 
@@ -176,10 +175,10 @@ describe('Doctors API (e2e)', () => {
     await prisma.doctor.deleteMany();
   });
 
-  describe('POST /v1/doctors', () => {
-    it('should create doctor', () => {
+  describe("POST /v1/doctors", () => {
+    it("should create doctor", () => {
       return request(app.getHttpServer())
-        .post('/v1/doctors')
+        .post("/v1/doctors")
         .send(createDoctorDto)
         .expect(201)
         .expect((res) => {
@@ -188,12 +187,12 @@ describe('Doctors API (e2e)', () => {
     });
   });
 
-  describe('GET /v1/doctors', () => {
-    it('should return paginated list', async () => {
+  describe("GET /v1/doctors", () => {
+    it("should return paginated list", async () => {
       await prisma.doctor.createMany({ data: mockDoctors(15) });
 
       return request(app.getHttpServer())
-        .get('/v1/doctors?page=1&limit=10')
+        .get("/v1/doctors?page=1&limit=10")
         .expect(200)
         .expect((res) => {
           expect(res.body.data).toHaveLength(10);
@@ -206,14 +205,15 @@ describe('Doctors API (e2e)', () => {
 
 ## Test Coverage Requirements
 
-| Metric | Minimum | Critical Paths |
-|--------|---------|----------------|
-| Lines | 80% | 95% |
-| Branches | 75% | 90% |
-| Functions | 80% | 95% |
-| Statements | 80% | 95% |
+| Metric     | Minimum | Critical Paths |
+| ---------- | ------- | -------------- |
+| Lines      | 80%     | 95%            |
+| Branches   | 75%     | 90%            |
+| Functions  | 80%     | 95%            |
+| Statements | 80%     | 95%            |
 
 ### Critical Paths (require 95%)
+
 - Authentication/Authorization
 - Data validation/sanitization
 - Database operations
@@ -222,7 +222,7 @@ describe('Doctors API (e2e)', () => {
 
 ## Commands
 
-Before backend `pnpm test:e2e`, load `.opencode/rules/e2e-runtime-prep.md`, prepare/verify the active checkout runtime env, and run the current in-process Jest/Supertest suite without PM2.
+Before backend `pnpm test:e2e`, load `.opencode/rules/e2e-runtime-prep.md`, verify the active checkout env/database, and run the current in-process Jest/Supertest suite without PM2.
 
 ```bash
 # Run all unit tests
@@ -234,14 +234,8 @@ pnpm test -- doctors.service.spec.ts
 # Run with coverage
 pnpm test:cov
 
-# From monorepo root: prepare runtime env once for the active branch checkout, then run the in-process suite
-TARGET_ROOT="$(pwd)"
-./scripts/setup-checkout-runtime.sh "$TARGET_ROOT"
-./scripts/verify-checkout-runtime.sh "$TARGET_ROOT"
-cd "$TARGET_ROOT/backend" && source ../.checkout-runtime/runtime.env && pnpm test:e2e
-
-# Or, if already inside the target checkout root
-source .checkout-runtime/runtime.env
+# From monorepo root: verify env/database for the active branch checkout, then run the in-process suite
+pnpm --filter ./backend prisma:generate
 cd backend && pnpm test:e2e
 
 # Run e2e tests (specific file)
@@ -315,6 +309,7 @@ pnpm test:watch -- --testPathPattern=doctors.service
 ## Verification Checklist
 
 Before marking task complete:
+
 - [ ] All unit tests pass (`pnpm test`)
 - [ ] All e2e tests pass (`pnpm test:e2e`)
 - [ ] Coverage meets minimum requirements

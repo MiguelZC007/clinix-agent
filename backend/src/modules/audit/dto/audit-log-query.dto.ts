@@ -1,6 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min, IsDateString } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  IsDateString,
+} from 'class-validator';
 
 export class AuditLogQueryDto {
   @ApiProperty({
@@ -10,9 +17,7 @@ export class AuditLogQueryDto {
     minimum: 1,
   })
   @IsOptional()
-  @Transform(({ value }) =>
-    value === undefined ? undefined : Number(value),
-  )
+  @Transform(({ value }) => (value === undefined ? undefined : Number(value)))
   @IsInt()
   @Min(1)
   page?: number;
@@ -25,9 +30,7 @@ export class AuditLogQueryDto {
     maximum: 100,
   })
   @IsOptional()
-  @Transform(({ value }) =>
-    value === undefined ? undefined : Number(value),
-  )
+  @Transform(({ value }) => (value === undefined ? undefined : Number(value)))
   @IsInt()
   @Min(1)
   @Max(100)

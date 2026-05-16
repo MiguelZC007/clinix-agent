@@ -1,6 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min, MaxLength, IsUUID, IsDateString } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  Max,
+  Min,
+  MaxLength,
+  IsUUID,
+  IsDateString,
+} from 'class-validator';
 
 export class FindAllClinicHistoriesQueryDto {
   @ApiProperty({
@@ -10,9 +18,7 @@ export class FindAllClinicHistoriesQueryDto {
     minimum: 1,
   })
   @IsOptional()
-  @Transform(({ value }) =>
-    value === undefined ? undefined : Number(value),
-  )
+  @Transform(({ value }) => (value === undefined ? undefined : Number(value)))
   @IsInt()
   @Min(1)
   page?: number;
@@ -25,16 +31,15 @@ export class FindAllClinicHistoriesQueryDto {
     maximum: 100,
   })
   @IsOptional()
-  @Transform(({ value }) =>
-    value === undefined ? undefined : Number(value),
-  )
+  @Transform(({ value }) => (value === undefined ? undefined : Number(value)))
   @IsInt()
   @Min(1)
   @Max(100)
   pageSize?: number;
 
   @ApiProperty({
-    description: 'Búsqueda por texto (paciente, motivo, diagnóstico, tratamiento)',
+    description:
+      'Búsqueda por texto (paciente, motivo, diagnóstico, tratamiento)',
     example: 'dolor',
     required: false,
     maxLength: 200,

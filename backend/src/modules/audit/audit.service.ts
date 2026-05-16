@@ -110,9 +110,7 @@ export class AuditService {
     }
   }
 
-  async findAll(
-    query: AuditLogQueryDto,
-  ): Promise<AuditLogListResultDto> {
+  async findAll(query: AuditLogQueryDto): Promise<AuditLogListResultDto> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
 
@@ -173,9 +171,7 @@ export class AuditService {
     }
 
     return {
-      items: items.map((item) =>
-        this.mapToDto(item as unknown as AuditLogWithUser),
-      ),
+      items: items.map((item) => this.mapToDto(item as AuditLogWithUser)),
       page,
       pageSize,
       total,

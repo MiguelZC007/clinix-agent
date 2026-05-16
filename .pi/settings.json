@@ -1,1 +1,30 @@
-{}
+{
+	"subagents": {
+		"agentOverrides": {
+			"context-builder": {
+				"model": "opencode-go/mimo-v2.5"
+			},
+			"delegate": {
+				"model": "opencode-go/mimo-v2.5"
+			},
+			"oracle": {
+				"model": "opencode-go/mimo-v2.5"
+			},
+			"planner": {
+				"model": "openai-codex/gpt-5.4"
+			},
+			"researcher": {
+				"model": "opencode-go/mimo-v2.5"
+			},
+			"reviewer": {
+				"model": "opencode-go/mimo-v2.5"
+			},
+			"scout": {
+				"model": "opencode-go/mimo-v2.5"
+			},
+			"worker": {
+				"model": "opencode-go/mimo-v2.5"
+			}
+		}
+	}
+}

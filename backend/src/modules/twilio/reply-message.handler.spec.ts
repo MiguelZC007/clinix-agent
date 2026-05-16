@@ -30,7 +30,9 @@ describe('ReplyMessageHandler', () => {
 
   beforeEach(() => {
     mockOpenaiService = {
-      processMessageFromDoctor: jest.fn().mockResolvedValue('Respuesta del asistente'),
+      processMessageFromDoctor: jest
+        .fn()
+        .mockResolvedValue('Respuesta del asistente'),
     };
     mockConversationService = {
       findDoctorByPhone: jest.fn().mockResolvedValue({
@@ -264,7 +266,9 @@ describe('ReplyMessageHandler', () => {
       const result = await handler.handle(webhookDataDoctor as never);
 
       expect(result.success).toBe(false);
-      expect(result.message).toContain('TWILIO_SESSION_EXPIRATION_TEMPLATE_SID');
+      expect(result.message).toContain(
+        'TWILIO_SESSION_EXPIRATION_TEMPLATE_SID',
+      );
       expect(mockTwilioService.sendProactiveTemplate).not.toHaveBeenCalled();
       expect(mockTwilioService.sendReply).not.toHaveBeenCalled();
     });

@@ -12,8 +12,13 @@ import { StructuringService } from './structuring.service';
 
 @Module({
   controllers: [OpenaiController, ConversationsController, MessagesController],
-  providers: [OpenaiService, ConversationService, PrismaService, StructuringService],
+  providers: [
+    OpenaiService,
+    ConversationService,
+    PrismaService,
+    StructuringService,
+  ],
   imports: [PrismaModule, AppointmentModule, ClinicHistoryModule],
   exports: [OpenaiService, ConversationService, StructuringService],
 })
-export class OpenaiModule { }
+export class OpenaiModule {}
