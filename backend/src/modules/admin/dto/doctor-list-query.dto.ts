@@ -52,7 +52,7 @@ export class DoctorListQueryDto {
     required: false,
   })
   @IsOptional()
-  @Transform(({ value }: { value: unknown }) => {
+  @Transform(({ value }: { value: unknown }): boolean | undefined => {
     if (value === 'true') return true;
     if (value === 'false') return false;
     return value as boolean | undefined;

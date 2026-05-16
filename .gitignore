@@ -2,11 +2,10 @@
 docs
 node_modules
 .windsurf/
-.checkout-runtime/
-.worktree-runtime/
 a.out
 # Local Pi runtime state
 .atl/
 .pi-lens/
 context.md
 progress.md
+HealthBrain HIS.html
