@@ -1,0 +1,88 @@
+# SDD Configuration for clinix-agent
+# Medical assistant monorepo: NestJS 11 + Prisma 7 + PostgreSQL (backend)
+#                              Next.js 15 + React 19 + Tailwind 4 (frontend)
+
+project:
+  name: clinix-agent
+  description: "Dual-app medical assistant: conversational AI for doctors via WhatsApp + web dashboard"
+  repository: git@github.com:MiguelZC007/clinix-agent.git
+  base_branch: develop
+  convention: conventional-commits
+  commit_language: es
+
+# SDD execution preferences
+sdd:
+  execution_mode: automatic # Run all phases back-to-back without pausing
+  artifact_store: engram # Persistent memory via Engram
+  chained_pr_strategy: auto-forecast
+  review_budget: 400 # changed lines before recommending chained PRs
+
+# Strict TDD mode
+testing:
+  strict_tdd: true
+  runners:
+    backend:
+      command: "cd backend && pnpm test"
+      lint: "cd backend && pnpm lint"
+      build: "cd backend && pnpm build"
+      e2e: "cd backend && pnpm test:e2e"
+      prisma_generate: "cd backend && pnpm prisma:generate"
+      prisma_migrate: "cd backend && pnpm prisma:migrate:deploy"
+      tsc: "cd backend && pnpm exec tsc --noEmit"
+    frontend:
+      command: "cd frontend && pnpm test"
+      lint: "cd frontend && pnpm lint"
+      build: "cd frontend && pnpm build"
+      e2e: "cd frontend && pnpm test:e2e"
+      tsc: "cd frontend && pnpm exec tsc --noEmit"
+    full:
+      lint: "pnpm lint"
+      test: "pnpm test"
+      build: "pnpm build"
+
+# Phase rules
+phases:
+  init:
+    description: "Initialize SDD context, testing capabilities, and skill registry"
+  explore:
+    description: "Explore codebase, map affected areas, identify risks"
+  proposal:
+    description: "Create change proposal with scope, approach, and acceptance criteria"
+  spec:
+    description: "Write detailed specification with API contracts and data models"
+  design:
+    description: "Architecture decisions, component design, and technical approach"
+  tasks:
+    description: "Break down into actionable tasks with TDD steps"
+  apply:
+    description: "Implement changes following TDD: RED, GREEN, TRIANGULATE, REFACTOR"
+  verify:
+    description: "Run full test suite, lint, build, and verify all acceptance criteria"
+  archive:
+    description: "Save artifacts, update Trello, create PR, and hand off"
+
+# Project structure
+structure:
+  backend:
+    path: backend
+    framework: nestjs
+    orm: prisma
+    database: postgresql
+    test_runner: jest
+  frontend:
+    path: frontend
+    framework: next.js
+    ui: tailwind + shadcn
+    test_runner: vitest
+    e2e: playwright
+
+# Engram topic keys for SDD artifacts
+engram:
+  topic_prefix: sdd
+  artifact_keys:
+    proposal: "sdd/{change}/proposal"
+    spec: "sdd/{change}/spec"
+    design: "sdd/{change}/design"
+    tasks: "sdd/{change}/tasks"
+    apply_progress: "sdd/{change}/apply-progress"
+    verify_report: "sdd/{change}/verify-report"

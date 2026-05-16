@@ -263,9 +263,35 @@ export class ConversationService {
       environment.OPENAI_MODEL,
     );
 
-    return this.prisma.message.create({
+    const message = await this.prisma.message.create({
       data: { conversationId, role, content, tokenCount },
     });
+
+    await this.maybeAutoSaveDraft(conversationId);
+
+    return message;
+  }
+
+  private async maybeAutoSaveDraft(conversationId: string): Promise<void> {
+    try {
+      const messageCount = await this.prisma.message.count({
+        where: { conversationId },
+      });
+
+      if (messageCount > 0 && messageCount % 3 === 0) {
+        await this.prisma.conversation.update({
+          where: { id: conversationId },
+          data: { isDraft: true, lastSavedAt: new Date() },
+        });
+        this.logger.debug(
+          `Auto-saved draft for conversation ${conversationId} (${messageCount} messages)`,
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to auto-save draft for conversation ${conversationId}: ${error}`,
+      );
+    }
   }
 
   async getConversationById(

@@ -113,18 +113,26 @@ model ClinicHistory {
   appointmentId      String?        @unique
 }
 
+enum ConversationMode {
+  LLM
+  MANUAL
+}
+
 model Conversation {
-  id                  String    @id @default(uuid())
+  id                  String           @id @default(uuid())
   model               String
   systemPrompt        String
   summary             String?
   contextTokenLimitOverride Int?
-  lastActivityAt      DateTime  @default(now())
-  isActive            Boolean   @default(true)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  mode                ConversationMode @default(LLM)
+  isDraft             Boolean          @default(true)
+  lastSavedAt         DateTime?
+  lastActivityAt      DateTime         @default(now())
+  isActive            Boolean          @default(true)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
   doctorId            String
-  doctor              Doctor    @relation(fields: [doctorId], references: [id])
+  doctor              Doctor           @relation(fields: [doctorId], references: [id])
   messages            Message[]
 }
 

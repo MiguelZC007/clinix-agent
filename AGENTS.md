@@ -63,11 +63,14 @@ cd frontend && pnpm test && pnpm lint && pnpm build
 
 - **Commits:** Conventional commits only (`feat`, `fix`, `refactor`, `test`, `docs`) y SIEMPRE en español
 - **Branches:** `feature/{TICKET-ID}-{desc}`, `fix/{TICKET-ID}-{desc}`
-- **PR target:** NEVER merge to `main` — always target `develop`
+- **Base branch:** SIEMPRE partir de `develop`. NO negociable.
+- **PR target:** SIEMPRE apuntar a `develop`. NUNCA merge a `main`. NO negociable.
 - **Tests:** Every new code MUST have tests (see `test-mandate`)
 - **SOLID:** Single responsibility, no business logic in controllers
 - **Barrel files:** Only re-export from the same module's own files. Never re-export from other modules (e.g. `moduleX/dto/index.ts` must NOT `export * from '../../moduleY/dto/...'`)
 - **No secrets:** Never commit `.env`, credentials, tokens
+- **Git libre:** Todos los comandos de `git` y `gh` están permitidos sin autorización (add, commit, push, pull, rebase, merge, checkout, stash, branch, etc.)
+- **Git destructivo:** Requieren autorización explícita del usuario: `git reset --hard`, `git push --force`, `git clean -fd`, `git branch -D`, `gh api -X DELETE` y cualquier operación que pueda perder trabajo no commiteado
 - **No `rm` destructive:** Use minimal, reversible changes
 - **Git repo boundary:** `clinix-agent/` is the REAL git repository root for the product.
 - **Monorepo multipaquete:** `backend/` and `frontend/` are packages/apps inside the SAME git repo, not separate git repositories.
@@ -78,6 +81,7 @@ cd frontend && pnpm test && pnpm lint && pnpm build
 - **Checkout estricto:** una vez seleccionado el ticket, TODO el trabajo real debe hacerse desde el checkout activo de esa branch. Nada de mezclar cambios en otra branch o fuera del repo raíz.
 - **Runtime activo por branch/ticket:** cada branch debe verificar env, base de datos y puertos libres antes de ejecutar servicios o E2E.
 - **No tests, no commit, no PR:** si la branch activa no puede ejecutar las pruebas requeridas con su entorno listo, se bloquea el handoff.
+- **develop es la única base:** todo ticket, branch y PR parte de `develop` y apunta a `develop`. `main` es solo para releases controlados. NO negociable.
 - **Sin checks requeridos, no push:** si tests/lint/build aplicables no pasaron en ese checkout/branch activo, no se puede commitear, pushear ni abrir PR.
 
 ## Architecture
