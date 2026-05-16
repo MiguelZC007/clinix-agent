@@ -61,16 +61,12 @@ describe('MessagesController', () => {
 
       const result = await controller.create(dto, mockUser);
 
-      expect(mockConversationService.createMessageForConversation).toHaveBeenCalledWith(
-        'conv-uuid',
-        'doctor-uuid',
-        'user',
-        'Hola',
-      );
-      expect(mockOpenaiService.processMessageInConversation).toHaveBeenCalledWith(
-        'doctor-uuid',
-        'conv-uuid',
-      );
+      expect(
+        mockConversationService.createMessageForConversation,
+      ).toHaveBeenCalledWith('conv-uuid', 'doctor-uuid', 'user', 'Hola');
+      expect(
+        mockOpenaiService.processMessageInConversation,
+      ).toHaveBeenCalledWith('doctor-uuid', 'conv-uuid');
       expect(result.id).toBe('msg-uuid');
       expect(result.role).toBe('user');
       expect(result.content).toBe('Hola');

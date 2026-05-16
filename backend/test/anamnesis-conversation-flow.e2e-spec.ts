@@ -24,7 +24,6 @@ import { ResponseInterceptor } from 'src/core/interceptors/response.interceptor'
 import { AppointmentService } from 'src/modules/appointment/appointment.service';
 import { AuthGuard } from 'src/modules/auth/guards/auth.guard';
 import { ClinicHistoryModule } from 'src/modules/clinic-history/clinic-history.module';
-import { ClinicHistoryService } from 'src/modules/clinic-history/clinic-history.service';
 import { ConversationService } from 'src/modules/openai/conversation.service';
 import { OpenaiService } from 'src/modules/openai/openai.service';
 import { StructuringService } from 'src/modules/openai/structuring.service';
@@ -121,11 +120,33 @@ describe('Flujo conversacional IA para anamnesis (e2e)', () => {
 
   it('guarda la conversación paso a paso y luego persiste la anamnesis verificable por endpoint', async () => {
     mockChatCompletionsCreate
-      .mockResolvedValueOnce(assistantText('Indíqueme el paciente o la cita para iniciar la anamnesis.'))
-      .mockResolvedValueOnce(assistantText('Paciente y cita identificados. Indíqueme motivo de consulta y síntomas.'))
-      .mockResolvedValueOnce(assistantText('Datos clínicos recibidos. Indíqueme examen físico, signos vitales y diagnóstico.'))
-      .mockResolvedValueOnce(assistantToolCall('call-create-history', 'create_clinic_history', buildClinicHistoryToolArgs()))
-      .mockResolvedValueOnce(assistantText('Historia clínica registrada correctamente desde la conversación.'));
+      .mockResolvedValueOnce(
+        assistantText(
+          'Indíqueme el paciente o la cita para iniciar la anamnesis.',
+        ),
+      )
+      .mockResolvedValueOnce(
+        assistantText(
+          'Paciente y cita identificados. Indíqueme motivo de consulta y síntomas.',
+        ),
+      )
+      .mockResolvedValueOnce(
+        assistantText(
+          'Datos clínicos recibidos. Indíqueme examen físico, signos vitales y diagnóstico.',
+        ),
+      )
+      .mockResolvedValueOnce(
+        assistantToolCall(
+          'call-create-history',
+          'create_clinic_history',
+          buildClinicHistoryToolArgs(),
+        ),
+      )
+      .mockResolvedValueOnce(
+        assistantText(
+          'Historia clínica registrada correctamente desde la conversación.',
+        ),
+      );
 
     await expect(
       openaiService.processMessageFromDoctor(
@@ -162,8 +183,12 @@ describe('Flujo conversacional IA para anamnesis (e2e)', () => {
 
     expect(conversation).not.toBeNull();
     expect(conversation?.messages).toHaveLength(8);
-    expect(conversation?.messages.filter((message) => message.role === 'user')).toHaveLength(4);
-    expect(conversation?.messages.filter((message) => message.role === 'assistant')).toHaveLength(4);
+    expect(
+      conversation?.messages.filter((message) => message.role === 'user'),
+    ).toHaveLength(4);
+    expect(
+      conversation?.messages.filter((message) => message.role === 'assistant'),
+    ).toHaveLength(4);
 
     const persistedHistory = await prisma.clinicHistory.findUnique({
       where: { appointmentId },
@@ -179,9 +204,17 @@ describe('Flujo conversacional IA para anamnesis (e2e)', () => {
     const body = response.body as ClinicHistoryDetailResponse;
     expect(body.success).toBe(true);
     expect(body.data?.appointmentId).toBe(appointmentId);
-    expect(body.data?.consultationReason).toBe('Dolor abdominal de 24 horas asociado a náuseas y distensión abdominal');
-    expect(body.data?.symptoms).toEqual(['dolor abdominal', 'náuseas', 'distensión abdominal']);
-    expect(body.data?.diagnostics?.[0]?.name).toBe('Gastroenteritis aguda probable');
+    expect(body.data?.consultationReason).toBe(
+      'Dolor abdominal de 24 horas asociado a náuseas y distensión abdominal',
+    );
+    expect(body.data?.symptoms).toEqual([
+      'dolor abdominal',
+      'náuseas',
+      'distensión abdominal',
+    ]);
+    expect(body.data?.diagnostics?.[0]?.name).toBe(
+      'Gastroenteritis aguda probable',
+    );
     expect(body.data?.physicalExams?.[0]?.name).toBe('Examen abdominal');
     expect(body.data?.vitalSigns).toHaveLength(4);
     expect(body.data?.prescription?.medications?.[0]?.name).toBe('Paracetamol');
@@ -271,7 +304,9 @@ describe('Flujo conversacional IA para anamnesis (e2e)', () => {
       });
       const prescriptionId = history?.prescription?.id;
       if (prescriptionId) {
-        await prisma.prescriptionMedication.deleteMany({ where: { prescriptionId } });
+        await prisma.prescriptionMedication.deleteMany({
+          where: { prescriptionId },
+        });
         await prisma.prescription.deleteMany({ where: { id: prescriptionId } });
       }
       await prisma.vitalSign.deleteMany({ where: { clinicHistoryId } });
@@ -281,45 +316,77 @@ describe('Flujo conversacional IA para anamnesis (e2e)', () => {
     }
 
     if (doctorId) {
-      await prisma.message.deleteMany({ where: { conversation: { doctorId } } });
+      await prisma.message.deleteMany({
+        where: { conversation: { doctorId } },
+      });
       await prisma.conversation.deleteMany({ where: { doctorId } });
     }
 
-    if (appointmentId) await prisma.appointment.deleteMany({ where: { id: appointmentId } });
-    if (patientId) await prisma.patient.deleteMany({ where: { id: patientId } });
-    if (patientUserId) await prisma.user.deleteMany({ where: { id: patientUserId } });
+    if (appointmentId)
+      await prisma.appointment.deleteMany({ where: { id: appointmentId } });
+    if (patientId)
+      await prisma.patient.deleteMany({ where: { id: patientId } });
+    if (patientUserId)
+      await prisma.user.deleteMany({ where: { id: patientUserId } });
     if (doctorId) await prisma.doctor.deleteMany({ where: { id: doctorId } });
-    if (doctorUserId) await prisma.user.deleteMany({ where: { id: doctorUserId } });
-    if (specialtyId) await prisma.specialty.deleteMany({ where: { id: specialtyId } });
+    if (doctorUserId)
+      await prisma.user.deleteMany({ where: { id: doctorUserId } });
+    if (specialtyId)
+      await prisma.specialty.deleteMany({ where: { id: specialtyId } });
   }
 
   function buildClinicHistoryToolArgs(): Record<string, unknown> {
     return {
       appointmentId,
-      consultationReason: 'Dolor abdominal de 24 horas asociado a náuseas y distensión abdominal',
+      consultationReason:
+        'Dolor abdominal de 24 horas asociado a náuseas y distensión abdominal',
       symptoms: ['dolor abdominal', 'náuseas', 'distensión abdominal'],
-      treatment: 'Hidratación oral, dieta blanda, control de signos de alarma y paracetamol si presenta dolor',
+      treatment:
+        'Hidratación oral, dieta blanda, control de signos de alarma y paracetamol si presenta dolor',
       diagnostics: [
         {
           name: 'Gastroenteritis aguda probable',
-          description: 'Cuadro compatible por evolución clínica y síntomas gastrointestinales.',
+          description:
+            'Cuadro compatible por evolución clínica y síntomas gastrointestinales.',
         },
       ],
       physicalExams: [
         {
           name: 'Examen abdominal',
-          description: 'Abdomen blando, depresible, doloroso en epigastrio, sin signos de irritación peritoneal.',
+          description:
+            'Abdomen blando, depresible, doloroso en epigastrio, sin signos de irritación peritoneal.',
         },
       ],
       vitalSigns: [
-        { name: 'Presión arterial', value: '118/76', unit: 'mmHg', measurement: 'sistólica/diastólica' },
-        { name: 'Frecuencia cardíaca', value: '82', unit: 'lpm', measurement: 'latidos por minuto' },
-        { name: 'Temperatura', value: '36.8', unit: '°C', measurement: 'axilar' },
-        { name: 'Saturación de oxígeno', value: '98', unit: '%', measurement: 'pulsioximetría' },
+        {
+          name: 'Presión arterial',
+          value: '118/76',
+          unit: 'mmHg',
+          measurement: 'sistólica/diastólica',
+        },
+        {
+          name: 'Frecuencia cardíaca',
+          value: '82',
+          unit: 'lpm',
+          measurement: 'latidos por minuto',
+        },
+        {
+          name: 'Temperatura',
+          value: '36.8',
+          unit: '°C',
+          measurement: 'axilar',
+        },
+        {
+          name: 'Saturación de oxígeno',
+          value: '98',
+          unit: '%',
+          measurement: 'pulsioximetría',
+        },
       ],
       prescription: {
         name: 'Tratamiento sintomático gastrointestinal',
-        description: 'Manejo inicial ambulatorio para síntomas gastrointestinales.',
+        description:
+          'Manejo inicial ambulatorio para síntomas gastrointestinales.',
         medications: [
           {
             name: 'Paracetamol',
@@ -340,7 +407,11 @@ function assistantText(content: string) {
   return { choices: [{ message: { content } }] };
 }
 
-function assistantToolCall(id: string, name: string, args: Record<string, unknown>) {
+function assistantToolCall(
+  id: string,
+  name: string,
+  args: Record<string, unknown>,
+) {
   return {
     choices: [
       {

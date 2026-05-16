@@ -4,104 +4,81 @@ Standard runtime preparation required before ANY frontend or backend E2E test ru
 
 ## Core Rule
 
-Always prepare and verify the runtime for the active ticket checkout BEFORE running `pnpm test:e2e`.
+Always verify the active monorepo checkout has the required env, database, ports, and build artifacts BEFORE running `pnpm test:e2e`.
 
-- Frontend E2E must prepare runtime, then start `backend/` AND `frontend/` in background with PM2 using `prod` mode.
+- Frontend E2E must run against the active checkout's backend and frontend services, started with package scripts or the documented Playwright/webServer flow.
 - Backend E2E currently runs in-process with Jest + Supertest and does NOT require PM2 external runtime.
-- Ports must come from the checkout runtime and must already be verified as free.
+- Do not use the removed checkout/worktree runtime scripts or `.checkout-runtime/runtime.env`.
 - If runtime, ports, env, or readiness fail, STOP. Do not run E2E tests.
 
 ## Shared Prerequisites
 
-Run from the target checkout root:
+Run from the target checkout root and verify manually:
 
 ```bash
-TARGET_ROOT="$(pwd)"
-./scripts/setup-checkout-runtime.sh "$TARGET_ROOT"
-./scripts/verify-checkout-runtime.sh "$TARGET_ROOT"
+pwd
+pnpm --filter ./backend prisma:generate
 ```
 
-Required before booting PM2 services for frontend E2E:
+Required before frontend E2E:
 
-- `pm2` must exist in `PATH`
-- `curl` must exist in `PATH`
-- Runtime file must exist at `.checkout-runtime/runtime.env`
-- Required prod boot artifacts must already exist for the app(s) you are going to start
-- For frontend prod, `.next` must be complete enough for `next start` (`BUILD_ID`, `build-manifest.json`, `routes-manifest.json`)
-- Missing or stale prod artifacts are not repaired automatically; they must be regenerated explicitly in that same checkout
-- Do not bypass the assigned `FRONTEND_PORT` / `BACKEND_PORT`
-
-## Canonical PM2 Wrapper
-
-Use this single entrypoint for checkout-scoped PM2 runtime orchestration:
-
-```bash
-./scripts/checkout-runtime.sh <prepare|start|stop|restart|status> "$TARGET_ROOT" [prod|dev]
-```
-
-Use `checkout-runtime.sh` directly from the active repo checkout.
+- `DATABASE_URL` points to a reachable local dev database
+- backend env contains required auth/provider/test placeholders
+- frontend env points to the intended backend base URL
+- backend and frontend ports are explicit and free
+- required prod/dev boot artifacts exist for the selected mode
+- `curl` exists in `PATH` for readiness checks when used
 
 ## Frontend E2E Runtime
 
-Frontend E2E uses the full product runtime, so boot BOTH apps in PM2 `prod` mode:
+Frontend E2E uses the full product runtime, so boot BOTH apps for the active checkout using package scripts or Playwright's configured server flow.
+
+Typical manual flow:
 
 ```bash
-TARGET_ROOT="$(pwd)"
-./scripts/setup-checkout-runtime.sh "$TARGET_ROOT"
-./scripts/verify-checkout-runtime.sh "$TARGET_ROOT"
-./scripts/checkout-runtime.sh prepare "$TARGET_ROOT" prod
-./scripts/checkout-runtime.sh start "$TARGET_ROOT" prod
-cd "$TARGET_ROOT/frontend" && pnpm test:e2e
+# terminal 1
+cd backend && pnpm dev
+
+# terminal 2
+cd frontend && pnpm dev
+
+# terminal 3
+cd frontend && pnpm test:e2e
 ```
-
-What `prepare` enforces before PM2 boot:
-
-- Runtime env exists and passes `verify-checkout-runtime.sh`
-- `backend/dist/src/main.js` exists for `pnpm start:prod`
-- `frontend/.next/BUILD_ID`, `frontend/.next/build-manifest.json`, and `frontend/.next/routes-manifest.json` exist for `next start`
-- Failure output must tell the operator to regenerate the missing prod artifact in the same checkout and explain that a copied/stale `.next` can be incompatible
 
 Readiness expectations:
 
-- Backend answers on `http://127.0.0.1:$BACKEND_PORT/api/docs`
-- Frontend answers on `http://127.0.0.1:$FRONTEND_PORT/es/login`
-- Playwright must use the external runtime by default, not its own ad-hoc server
+- Backend answers on the configured backend URL, normally `/api/docs` or `/v1` routes depending on the test.
+- Frontend answers on the configured frontend URL, normally `/es/login` for auth smoke checks.
+- Playwright must not silently target another branch's already-running services.
 
-When finished:
-
-```bash
-./scripts/checkout-runtime.sh stop "$TARGET_ROOT"
-```
+When finished, stop only the services you started for this checkout.
 
 ## Backend E2E Runtime
 
-Backend E2E uses the in-process Nest test app from Jest/Supertest. It still benefits from the checkout runtime env because ports, `DATABASE_URL`, and `.env.checkout` are prepared consistently, but it must NOT require PM2 boot to run the current suite.
+Backend E2E uses the in-process Nest test app from Jest/Supertest. It requires env and database readiness but must NOT require PM2 or external frontend/backend services for the current suite.
 
 ```bash
-TARGET_ROOT="$(pwd)"
-./scripts/setup-checkout-runtime.sh "$TARGET_ROOT"
-./scripts/verify-checkout-runtime.sh "$TARGET_ROOT"
-source "$TARGET_ROOT/.checkout-runtime/runtime.env"
-cd "$TARGET_ROOT/backend" && pnpm test:e2e
+cd backend
+pnpm test:e2e
 ```
 
-Backend E2E must not start frontend or backend PM2 services unless the test suite changes away from the current in-process model.
+Backend E2E must not start frontend or backend external services unless the test suite changes away from the current in-process model.
 
 ## Failure Protocol
 
 If any prerequisite fails:
 
 1. STOP
-2. Fix ports, env, missing artifacts, or PM2 prerequisites
-3. Re-run `setup-checkout-runtime.sh`
-4. Re-run `verify-checkout-runtime.sh`
-5. If this is frontend E2E, re-run `checkout-runtime.sh prepare "$TARGET_ROOT" prod`
-6. Re-start the required PM2 service set in `prod` mode with `checkout-runtime.sh`
-7. Only then run `pnpm test:e2e`
+2. Fix ports, env, missing artifacts, or service prerequisites
+3. Regenerate Prisma/client artifacts if needed
+4. Restart only the affected package service(s)
+5. Re-run readiness checks
+6. Only then run `pnpm test:e2e`
 
 ## Hard Enforcement
 
-- No verified runtime = no E2E
-- Frontend E2E without PM2 `prod` runtime = invalid run
+- No working env/database when required = no E2E
+- Frontend E2E targeting the wrong checkout's services = invalid run
 - Frontend E2E without backend + frontend ready = invalid run
-- Backend E2E must follow the prepared runtime env, but PM2 is not part of the current contract
+- Backend E2E must use the active checkout env/database, but PM2 is not part of the current contract

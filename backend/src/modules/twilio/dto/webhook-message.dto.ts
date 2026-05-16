@@ -39,7 +39,8 @@ export class WebhookMessageDto {
   To: string;
 
   @ApiPropertyOptional({
-    description: 'Contenido del mensaje (puede faltar en mensajes solo con media)',
+    description:
+      'Contenido del mensaje (puede faltar en mensajes solo con media)',
     example: 'Hola, este es un mensaje recibido',
   })
   @IsOptional()

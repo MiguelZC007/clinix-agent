@@ -137,18 +137,18 @@ describe('Twilio Webhook - Flujo Real de Anamnesis (e2e)', () => {
     console.log('   ✅ Limpieza completada\n');
   }
 
-function createWebhookPayload(message: string): Record<string, string> {
-  messageCounter++;
-  return {
-    MessageSid: `SM${Date.now()}${messageCounter}`,
-    AccountSid: 'ACtest123456',
-    From: `whatsapp:${testDoctorPhone}`,
-    To: environment.TWILIO_WHATSAPP_FROM || 'whatsapp:+14155238886',
-    Body: message,
-    NumMedia: '0',
-    SmsStatus: 'received',
-  };
-}
+  function createWebhookPayload(message: string): Record<string, string> {
+    messageCounter++;
+    return {
+      MessageSid: `SM${Date.now()}${messageCounter}`,
+      AccountSid: 'ACtest123456',
+      From: `whatsapp:${testDoctorPhone}`,
+      To: environment.TWILIO_WHATSAPP_FROM || 'whatsapp:+14155238886',
+      Body: message,
+      NumMedia: '0',
+      SmsStatus: 'received',
+    };
+  }
 
   async function sendWebhookMessage(
     message: string,

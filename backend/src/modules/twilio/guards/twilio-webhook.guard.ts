@@ -20,11 +20,17 @@ export class TwilioWebhookGuard implements CanActivate {
     );
     const authToken = environment.TWILIO_AUTH_TOKEN;
     if (!authToken) {
-      this.logger.error('TWILIO_AUTH_TOKEN no configurado para validar webhook');
+      this.logger.error(
+        'TWILIO_AUTH_TOKEN no configurado para validar webhook',
+      );
       throw new ForbiddenException('twilio-webhook-validation-unavailable');
     }
     const signature = request.header('X-Twilio-Signature') ?? '';
-    const proto = (request.get('x-forwarded-proto') ?? request.protocol ?? 'https')
+    const proto = (
+      request.get('x-forwarded-proto') ??
+      request.protocol ??
+      'https'
+    )
       .split(',')[0]
       .trim();
     const host = request.get('x-forwarded-host') ?? request.get('host') ?? '';

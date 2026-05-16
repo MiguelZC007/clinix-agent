@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -9,7 +10,10 @@ describe('RolesGuard', () => {
   let guard: RolesGuard;
   let reflector: jest.Mocked<Reflector>;
 
-  const createMockContext = (requiredRoles?: Role[], user?: { role?: Role }) => {
+  const createMockContext = (
+    requiredRoles?: Role[],
+    user?: { role?: Role },
+  ) => {
     const request = { user };
     return {
       switchToHttp: () => ({
@@ -26,10 +30,7 @@ describe('RolesGuard', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        RolesGuard,
-        { provide: Reflector, useValue: mockReflector },
-      ],
+      providers: [RolesGuard, { provide: Reflector, useValue: mockReflector }],
     }).compile();
 
     guard = module.get<RolesGuard>(RolesGuard);
@@ -80,10 +81,10 @@ describe('RolesGuard', () => {
 
       guard.canActivate(context);
 
-      expect(reflector.getAllAndOverride).toHaveBeenCalledWith(
-        ROLES_KEY,
-        [context.getHandler(), context.getClass()],
-      );
+      expect(reflector.getAllAndOverride).toHaveBeenCalledWith(ROLES_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]);
     });
   });
 });

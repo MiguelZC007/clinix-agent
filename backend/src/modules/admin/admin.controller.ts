@@ -59,7 +59,10 @@ export class AdminController {
     type: DoctorResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Datos de entrada inválidos' })
-  @ApiResponse({ status: 409, description: 'Email, teléfono o licencia ya existe' })
+  @ApiResponse({
+    status: 409,
+    description: 'Email, teléfono o licencia ya existe',
+  })
   @ApiResponse({ status: 404, description: 'Especialidad no encontrada' })
   createDoctor(
     @Body() dto: CreateDoctorDto,
@@ -103,7 +106,10 @@ export class AdminController {
     description: 'Doctor actualizado',
     type: DoctorResponseDto,
   })
-  @ApiResponse({ status: 404, description: 'Doctor o especialidad no encontrada' })
+  @ApiResponse({
+    status: 404,
+    description: 'Doctor o especialidad no encontrada',
+  })
   @ApiResponse({ status: 409, description: 'Número de licencia duplicado' })
   updateDoctor(
     @Param('id', ParseUUIDPipe) id: string,
@@ -153,9 +159,7 @@ export class AdminController {
     status: 200,
     description: 'Lista de logs de auditoría',
   })
-  findAuditLogs(
-    @Query() query: AuditLogQueryDto,
-  ) {
+  findAuditLogs(@Query() query: AuditLogQueryDto) {
     return this.auditService.findAll(query);
   }
 
@@ -167,9 +171,7 @@ export class AdminController {
     description: 'Detalle del log de auditoría',
   })
   @ApiResponse({ status: 404, description: 'Log de auditoría no encontrado' })
-  findOneAuditLog(
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  findOneAuditLog(@Param('id', ParseUUIDPipe) id: string) {
     return this.auditService.findOne(id);
   }
 }

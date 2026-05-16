@@ -111,7 +111,10 @@ describe('DataTable', () => {
     );
 
     const buttons = screen.getAllByRole('button');
-    const nextButton = buttons.find(btn => !btn.disabled && btn.textContent !== '');
+    const nextButton = buttons.find(
+      (btn): btn is HTMLButtonElement =>
+        btn instanceof HTMLButtonElement && !btn.disabled && btn.textContent !== '',
+    );
     if (nextButton) {
       await user.click(nextButton);
       expect(onPageChange).toHaveBeenCalled();

@@ -1,6 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min, IsBoolean, IsUUID } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  IsBoolean,
+  IsUUID,
+} from 'class-validator';
 
 export class DoctorListQueryDto {
   @ApiProperty({
@@ -10,9 +18,7 @@ export class DoctorListQueryDto {
     minimum: 1,
   })
   @IsOptional()
-  @Transform(({ value }) =>
-    value === undefined ? undefined : Number(value),
-  )
+  @Transform(({ value }) => (value === undefined ? undefined : Number(value)))
   @IsInt()
   @Min(1)
   page?: number;
@@ -25,9 +31,7 @@ export class DoctorListQueryDto {
     maximum: 100,
   })
   @IsOptional()
-  @Transform(({ value }) =>
-    value === undefined ? undefined : Number(value),
-  )
+  @Transform(({ value }) => (value === undefined ? undefined : Number(value)))
   @IsInt()
   @Min(1)
   @Max(100)
@@ -48,10 +52,10 @@ export class DoctorListQueryDto {
     required: false,
   })
   @IsOptional()
-  @Transform(({ value }) => {
+  @Transform(({ value }: { value: unknown }) => {
     if (value === 'true') return true;
     if (value === 'false') return false;
-    return value;
+    return value as boolean | undefined;
   })
   @IsBoolean()
   isActive?: boolean;

@@ -523,9 +523,9 @@ export class ClinicHistoryService {
     const doctors = withDoctors
       .filter((row) => row.doctor != null)
       .map((row) => ({
-        id: row.doctor!.id,
-        name: row.doctor!.user.name,
-        lastName: row.doctor!.user.lastName,
+        id: row.doctor.id,
+        name: row.doctor.user.name,
+        lastName: row.doctor.user.lastName,
       }));
 
     const withSpecialties = await this.prisma.clinicHistory.findMany({
@@ -540,8 +540,8 @@ export class ClinicHistoryService {
     const specialties = withSpecialties
       .filter((row) => row.specialty != null)
       .map((row) => ({
-        id: row.specialty!.id,
-        name: row.specialty!.name,
+        id: row.specialty.id,
+        name: row.specialty.name,
       }));
 
     return { doctors, specialties };
@@ -634,7 +634,10 @@ export class ClinicHistoryService {
   private validatePrescriptionAgainstPatient(
     medications: CreatePrescriptionMedicationDto[],
     patient: { allergies: string[]; medications: string[] },
-  ): { blockingErrors: PrescriptionConflict[]; warnings: PrescriptionConflict[] } {
+  ): {
+    blockingErrors: PrescriptionConflict[];
+    warnings: PrescriptionConflict[];
+  } {
     const blockingErrors: PrescriptionConflict[] = [];
     const warnings: PrescriptionConflict[] = [];
 

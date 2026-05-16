@@ -14,29 +14,29 @@ Load this skill when creating, modifying, debugging, or verifying Playwright E2E
 ## Hard Rules
 
 - Load `.opencode/rules/frontend-e2e.md` and `.opencode/rules/e2e-runtime-prep.md` before E2E work.
-- Use the active ticket checkout runtime; do not rely on ad-hoc servers or another branch's ports.
+- Use the active ticket checkout env and services; do not rely on ad-hoc servers or another branch's ports.
 - Prefer `data-testid`, user-visible assertions, Page Object Model helpers, and independent tests.
 - Never use arbitrary long waits; wait for selectors, responses, load state, or explicit readiness.
 - Preserve Playwright artifacts on failure and do not mark complete until the required E2E checks pass.
 
 ## Decision Gates
 
-| Need                       | Action                                                   |
-| -------------------------- | -------------------------------------------------------- |
-| Critical happy path        | Add/update smoke E2E                                     |
-| CRUD/admin workflow        | Use Page Object Model under `frontend/e2e/pages/`        |
-| Error/empty/loading states | Mock API responses with Playwright routing               |
-| Auth-dependent flow        | Use persisted auth setup and documented test credentials |
-| Flaky runtime              | Stop and fix checkout runtime before re-running          |
+| Need                       | Action                                                      |
+| -------------------------- | ----------------------------------------------------------- |
+| Critical happy path        | Add/update smoke E2E                                        |
+| CRUD/admin workflow        | Use Page Object Model under `frontend/e2e/pages/`           |
+| Error/empty/loading states | Mock API responses with Playwright routing                  |
+| Auth-dependent flow        | Use persisted auth setup and documented test credentials    |
+| Flaky runtime              | Stop and fix active checkout env/services before re-running |
 
 ## Execution Steps
 
-1. Prepare and verify checkout runtime from the monorepo root.
-2. Start only checkout-scoped services when the test needs browser runtime.
+1. Verify active checkout env/database/ports from the monorepo root.
+2. Start only active checkout services when the test needs browser runtime.
 3. Write or update Playwright tests with stable selectors and isolated data.
 4. Run the narrow spec, then the required frontend E2E command from `frontend/`.
 5. Inspect trace/video/screenshot artifacts for failures before changing app code.
-6. Stop only this checkout's runtime services after E2E execution.
+6. Stop only this checkout's services after E2E execution.
 
 ## Output Contract
 
@@ -46,6 +46,6 @@ Return affected specs/pages, runtime command evidence, E2E command results, arti
 
 - `.opencode/rules/frontend-e2e.md`
 - `.opencode/rules/e2e-runtime-prep.md`
-- `.opencode/rules/checkout-runtime-gate.md`
+- `.opencode/rules/dev-runtime-gate.md`
 - `frontend/playwright.config.ts`
 - `frontend/e2e/TEST_CREDENTIALS.md`

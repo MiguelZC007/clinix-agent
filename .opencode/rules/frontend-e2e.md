@@ -32,33 +32,33 @@ frontend/
 ### playwright.config.ts
 
 ```typescript
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: "./e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
-  
+  reporter: "html",
+
   use: {
-    baseURL: 'http://localhost:3003',
-    trace: 'on-first-retry',
-    video: 'on',
-    screenshot: 'on-failure',
+    baseURL: "http://localhost:3003",
+    trace: "on-first-retry",
+    video: "on",
+    screenshot: "on-failure",
   },
 
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
     },
   ],
 
   webServer: {
-    command: 'pnpm dev',
-    url: 'http://localhost:3003',
+    command: "pnpm dev",
+    url: "http://localhost:3003",
     reuseExistingServer: true,
   },
 });
@@ -78,7 +78,7 @@ export class DoctorsPage {
   }
 
   async goto() {
-    await this.page.goto('/admin/doctors');
+    await this.page.goto("/admin/doctors");
   }
 
   async createDoctor(data: CreateDoctorDto) {
@@ -98,10 +98,10 @@ export class DoctorsPage {
 
 ```typescript
 // e2e/admin-doctors.spec.ts
-import { test, expect } from '@playwright/test';
-import { DoctorsPage } from './pages/admin/doctors-page';
+import { test, expect } from "@playwright/test";
+import { DoctorsPage } from "./pages/admin/doctors-page";
 
-test.describe('Admin Doctors Management', () => {
+test.describe("Admin Doctors Management", () => {
   let doctorsPage: DoctorsPage;
 
   test.beforeEach(async ({ page }) => {
@@ -109,21 +109,21 @@ test.describe('Admin Doctors Management', () => {
     await doctorsPage.goto();
   });
 
-  test('should display doctors list', async ({ page }) => {
-    await expect(page.locator('table')).toBeVisible();
-    await expect(page.locator('th').first()).toContainText('Nombre');
+  test("should display doctors list", async ({ page }) => {
+    await expect(page.locator("table")).toBeVisible();
+    await expect(page.locator("th").first()).toContainText("Nombre");
   });
 
-  test('should create new doctor', async ({ page }) => {
+  test("should create new doctor", async ({ page }) => {
     await doctorsPage.createDoctor({
-      name: 'Dr. Test',
-      email: 'test@example.com',
+      name: "Dr. Test",
+      email: "test@example.com",
     });
 
     // Wait for React hydration (~5 seconds for slow machines)
     await page.waitForTimeout(3000);
-    
-    const row = await doctorsPage.getDoctorRow('test@example.com');
+
+    const row = await doctorsPage.getDoctorRow("test@example.com");
     await expect(row).toBeVisible();
   });
 });
@@ -133,29 +133,32 @@ test.describe('Admin Doctors Management', () => {
 
 ```typescript
 // e2e/auth.setup.ts
-import { test as setup } from '@playwright/test';
+import { test as setup } from "@playwright/test";
 
-const authFile = 'playwright/.auth/user.json';
+const authFile = "playwright/.auth/user.json";
 
-setup('authenticate', async ({ page }) => {
-  await page.goto('/login');
+setup("authenticate", async ({ page }) => {
+  await page.goto("/login");
   await page.fill('[data-testid="input-email"]', process.env.TEST_USER_EMAIL!);
-  await page.fill('[data-testid="input-password"]', process.env.TEST_USER_PASSWORD!);
+  await page.fill(
+    '[data-testid="input-password"]',
+    process.env.TEST_USER_PASSWORD!,
+  );
   await page.click('[data-testid="btn-login"]');
-  await page.waitForURL('/dashboard');
-  
+  await page.waitForURL("/dashboard");
+
   await page.context().storageState({ path: authFile });
 });
 
 // In playwright.config.ts
 projects: [
-  { name: 'setup', testMatch: /.*\.setup\.ts/ },
+  { name: "setup", testMatch: /.*\.setup\.ts/ },
   {
-    name: 'chromium',
-    use: { storageState: 'playwright/.auth/user.json' },
-    dependencies: ['setup'],
+    name: "chromium",
+    use: { storageState: "playwright/.auth/user.json" },
+    dependencies: ["setup"],
   },
-]
+];
 ```
 
 ### 4. Waiting Strategies
@@ -165,9 +168,9 @@ projects: [
 await page.waitForTimeout(5000);
 
 // GOOD: Wait for specific conditions
-await expect(page.locator('table')).toBeVisible();
-await page.waitForResponse('**/api/doctors');
-await page.waitForLoadState('networkidle');
+await expect(page.locator("table")).toBeVisible();
+await page.waitForResponse("**/api/doctors");
+await page.waitForLoadState("networkidle");
 
 // GOOD for React hydration
 await page.waitForSelector('[data-testid="hydrated"]', { timeout: 10000 });
@@ -176,23 +179,23 @@ await page.waitForSelector('[data-testid="hydrated"]', { timeout: 10000 });
 ### 5. Form Testing
 
 ```typescript
-test('should validate form fields', async ({ page }) => {
-  await page.goto('/admin/doctors/new');
-  
+test("should validate form fields", async ({ page }) => {
+  await page.goto("/admin/doctors/new");
+
   // Submit empty form
   await page.click('[data-testid="btn-submit"]');
-  
+
   // Check validation errors
-  await expect(page.locator('text=El nombre es requerido')).toBeVisible();
-  await expect(page.locator('text=El email es requerido')).toBeVisible();
-  
+  await expect(page.locator("text=El nombre es requerido")).toBeVisible();
+  await expect(page.locator("text=El email es requerido")).toBeVisible();
+
   // Fill valid data
-  await page.fill('[data-testid="input-name"]', 'Dr. Valid');
-  await page.fill('[data-testid="input-email"]', 'valid@test.com');
+  await page.fill('[data-testid="input-name"]', "Dr. Valid");
+  await page.fill('[data-testid="input-email"]', "valid@test.com");
   await page.click('[data-testid="btn-submit"]');
-  
+
   // Should not show errors
-  await expect(page.locator('text=El nombre es requerido')).not.toBeVisible();
+  await expect(page.locator("text=El nombre es requerido")).not.toBeVisible();
 });
 ```
 
@@ -200,35 +203,35 @@ test('should validate form fields', async ({ page }) => {
 
 ```typescript
 // e2e/admin-doctors.mock.spec.ts
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test.describe('Admin Doctors (Mocked API)', () => {
-  test('should show empty state', async ({ page }) => {
+test.describe("Admin Doctors (Mocked API)", () => {
+  test("should show empty state", async ({ page }) => {
     // Mock empty response
-    await page.route('**/v1/doctors*', route => {
+    await page.route("**/v1/doctors*", (route) => {
       route.fulfill({
         status: 200,
         body: JSON.stringify({ data: [], total: 0 }),
       });
     });
 
-    await page.goto('/admin/doctors');
-    
-    await expect(page.locator('text=No hay médicos')).toBeVisible();
+    await page.goto("/admin/doctors");
+
+    await expect(page.locator("text=No hay médicos")).toBeVisible();
   });
 
-  test('should handle API error', async ({ page }) => {
+  test("should handle API error", async ({ page }) => {
     // Mock error
-    await page.route('**/v1/doctors*', route => {
+    await page.route("**/v1/doctors*", (route) => {
       route.fulfill({
         status: 500,
-        body: JSON.stringify({ message: 'Internal Error' }),
+        body: JSON.stringify({ message: "Internal Error" }),
       });
     });
 
-    await page.goto('/admin/doctors');
-    
-    await expect(page.locator('text=Error al cargar')).toBeVisible();
+    await page.goto("/admin/doctors");
+
+    await expect(page.locator("text=Error al cargar")).toBeVisible();
   });
 });
 ```
@@ -240,10 +243,10 @@ test.describe('Admin Doctors (Mocked API)', () => {
 ```typescript
 // e2e/fixtures/doctor.fixture.ts
 export const mockDoctor = {
-  id: '123e4567-e89b-12d3-a456-426614174000',
-  name: 'Dr. John Doe',
-  email: 'john.doe@example.com',
-  status: 'active',
+  id: "123e4567-e89b-12d3-a456-426614174000",
+  name: "Dr. John Doe",
+  email: "john.doe@example.com",
+  status: "active",
   createdAt: new Date().toISOString(),
 };
 
@@ -267,23 +270,24 @@ BASE_URL=http://localhost:3003
 
 ## Commands
 
-Before any frontend E2E run, load `.opencode/rules/e2e-runtime-prep.md` and boot the external PM2 runtime in `prod` mode through the canonical wrapper from the active ticket checkout:
+Before any frontend E2E run, load `.opencode/rules/e2e-runtime-prep.md` and boot the active checkout's backend/frontend services with package scripts or Playwright's configured server flow:
 
 ```bash
-TARGET_ROOT="$(pwd)"
-./scripts/setup-checkout-runtime.sh "$TARGET_ROOT"
-./scripts/verify-checkout-runtime.sh "$TARGET_ROOT"
-./scripts/checkout-runtime.sh prepare "$TARGET_ROOT" prod
-./scripts/checkout-runtime.sh start "$TARGET_ROOT" prod
-cd "$TARGET_ROOT/frontend" && pnpm test:e2e
-./scripts/checkout-runtime.sh stop "$TARGET_ROOT"
+# terminal 1
+cd backend && pnpm dev
+
+# terminal 2
+cd frontend && pnpm dev
+
+# terminal 3
+cd frontend && pnpm test:e2e
 ```
 
-Why `prepare` matters:
+Why explicit runtime prep matters:
 
-- It fails before PM2 boot if the frontend prod artifact is missing or incomplete for `next start`
-- It makes the regeneration step explicit: rebuild in the same checkout with `pnpm --filter frontend build`
-- It warns that a stale or copied `.next` can be incompatible even if the directory exists
+- It prevents Playwright from targeting another branch's already-running services
+- It makes rebuild/regeneration explicit when prod artifacts are required
+- It keeps env/database/ports tied to the active checkout
 
 ```bash
 # Run all E2E tests
@@ -333,24 +337,24 @@ await page.fill('[data-testid="input-email"]', email);
 
 ```typescript
 // BAD: Brittle
-await page.click('.MuiButton-root.MuiButton-contained')
+await page.click(".MuiButton-root.MuiButton-contained");
 
 // GOOD: Stable
-await page.click('[data-testid="btn-submit"]')
+await page.click('[data-testid="btn-submit"]');
 ```
 
 ### 3. Wait for NetworkIdle on Critical Flows
 
 ```typescript
-test('should save doctor', async ({ page }) => {
-  await page.goto('/admin/doctors/new');
-  await page.fill('[data-testid="input-name"]', 'Dr. Test');
-  await page.fill('[data-testid="input-email"]', 'test@test.com');
+test("should save doctor", async ({ page }) => {
+  await page.goto("/admin/doctors/new");
+  await page.fill('[data-testid="input-name"]', "Dr. Test");
+  await page.fill('[data-testid="input-email"]', "test@test.com");
   await page.click('[data-testid="btn-submit"]');
-  
+
   // Wait for API call to complete
-  await page.waitForLoadState('networkidle');
-  
+  await page.waitForLoadState("networkidle");
+
   // Verify redirect or success message
   await expect(page).toHaveURL(/\/admin\/doctors\/[\w-]+/);
 });
@@ -360,14 +364,14 @@ test('should save doctor', async ({ page }) => {
 
 ```typescript
 // Next.js hydration needs time
-test('should handle React hydration', async ({ page }) => {
-  await page.goto('/admin/doctors');
-  
+test("should handle React hydration", async ({ page }) => {
+  await page.goto("/admin/doctors");
+
   // Wait for hydration to complete
   await page.waitForFunction(() => {
-    return document.readyState === 'complete';
+    return document.readyState === "complete";
   });
-  
+
   // Alternative: wait for specific state
   await page.waitForSelector('[data-testid="hydrated"]', { timeout: 5000 });
 });
@@ -375,12 +379,12 @@ test('should handle React hydration', async ({ page }) => {
 
 ## Test Categories
 
-| Category | File Pattern | Purpose |
-|----------|--------------|---------|
-| Smoke | `e2e/smoke/*.spec.ts` | Critical paths only |
-| Auth | `e2e/auth/*.spec.ts` | Login/logout flows |
-| CRUD | `e2e/admin/*.spec.ts` | CRUD operations |
-| Mock | `e2e/**/*.mock.spec.ts` | Isolated API tests |
+| Category | File Pattern            | Purpose             |
+| -------- | ----------------------- | ------------------- |
+| Smoke    | `e2e/smoke/*.spec.ts`   | Critical paths only |
+| Auth     | `e2e/auth/*.spec.ts`    | Login/logout flows  |
+| CRUD     | `e2e/admin/*.spec.ts`   | CRUD operations     |
+| Mock     | `e2e/**/*.mock.spec.ts` | Isolated API tests  |
 
 ## Reports & Artifacts
 
@@ -439,6 +443,7 @@ Location: `test-results/{test-id}/screenshots/`
 ## Verification Checklist
 
 Before marking complete:
+
 - [ ] All tests pass locally
 - [ ] All tests pass in CI
 - [ ] Videos generated for failures

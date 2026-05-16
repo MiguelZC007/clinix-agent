@@ -22,32 +22,32 @@ Dual-app medical assistant: conversational AI for doctors via WhatsApp + web das
 
 ## Rules (load on demand)
 
-| When | Load | File |
-|------|------|------|
-| Starting any ticket | ticket-router | `.opencode/rules/ticket-router.md` |
-| Starting any ticket | branch-first | `.opencode/rules/branch-first.md` |
-| Before ANY commit | pre-commit-gate | `.opencode/rules/pre-commit-gate.md` |
-| Before ANY commit | commit-language | `.opencode/rules/commit-language.md` |
-| Before tests/commit/PR for the active ticket checkout | checkout-runtime-gate | `.opencode/rules/checkout-runtime-gate.md` |
-| Before frontend or backend E2E tests | e2e-runtime-prep | `.opencode/rules/e2e-runtime-prep.md` |
-| Writing new code | test-mandate | `.opencode/rules/test-mandate.md` |
-| Writing backend tests | backend-testing | `.opencode/rules/backend-testing.md` |
-| Writing E2E frontend tests | frontend-e2e | `.opencode/rules/frontend-e2e.md` |
-| Creating/modifying project skills | skill-consistency | `.opencode/rules/skill-consistency.md` |
-| Database schema changes, migrations, Prisma errors | prisma-orm | `.opencode/rules/prisma-orm.md` |
+| When                                                  | Load              | File                                   |
+| ----------------------------------------------------- | ----------------- | -------------------------------------- |
+| Starting any ticket                                   | ticket-router     | `.opencode/rules/ticket-router.md`     |
+| Starting any ticket                                   | branch-first      | `.opencode/rules/branch-first.md`      |
+| Before ANY commit                                     | pre-commit-gate   | `.opencode/rules/pre-commit-gate.md`   |
+| Before ANY commit                                     | commit-language   | `.opencode/rules/commit-language.md`   |
+| Before tests/commit/PR for the active ticket checkout | dev-runtime-gate  | `.opencode/rules/dev-runtime-gate.md`  |
+| Before frontend or backend E2E tests                  | e2e-runtime-prep  | `.opencode/rules/e2e-runtime-prep.md`  |
+| Writing new code                                      | test-mandate      | `.opencode/rules/test-mandate.md`      |
+| Writing backend tests                                 | backend-testing   | `.opencode/rules/backend-testing.md`   |
+| Writing E2E frontend tests                            | frontend-e2e      | `.opencode/rules/frontend-e2e.md`      |
+| Creating/modifying project skills                     | skill-consistency | `.opencode/rules/skill-consistency.md` |
+| Database schema changes, migrations, Prisma errors    | prisma-orm        | `.opencode/rules/prisma-orm.md`        |
 
 ## Skills (load on demand)
 
-| When | Load |
-|------|------|
-| Working a ticket end-to-end | `ticket-workflow` |
-| Adversarial code review | `judgment-day` |
-| SDD phases | `sdd-*` skills |
-| Creating PR | `branch-pr` |
-| Writing backend tests (unit/integration/API) | `backend-testing` |
-| Writing frontend E2E tests (Playwright) | `frontend-e2e` |
-| Starting/stopping dev services | `dev-services` |
-| Database schema changes, migrations, Prisma errors | `prisma-orm` |
+| When                                               | Load              |
+| -------------------------------------------------- | ----------------- |
+| Working a ticket end-to-end                        | `ticket-workflow` |
+| Adversarial code review                            | `judgment-day`    |
+| SDD phases                                         | `sdd-*` skills    |
+| Creating PR                                        | `branch-pr`       |
+| Writing backend tests (unit/integration/API)       | `backend-testing` |
+| Writing frontend E2E tests (Playwright)            | `frontend-e2e`    |
+| Starting/stopping dev services                     | `dev-services`    |
+| Database schema changes, migrations, Prisma errors | `prisma-orm`      |
 
 ## Quick Commands
 
@@ -76,9 +76,9 @@ cd frontend && pnpm test && pnpm lint && pnpm build
 - Never assume `backend/` or `frontend/` are standalone git repos.
 - **Branch first:** todo ticket debe crear o cambiar a su branch dedicada antes de analizar, editar, testear o commitear.
 - **Checkout estricto:** una vez seleccionado el ticket, TODO el trabajo real debe hacerse desde el checkout activo de esa branch. Nada de mezclar cambios en otra branch o fuera del repo raíz.
-- **Runtime por branch/ticket:** cada branch activa debe usar puertos propios y libres para frontend/backend aunque comparta la misma base de datos local.
+- **Runtime activo por branch/ticket:** cada branch debe verificar env, base de datos y puertos libres antes de ejecutar servicios o E2E.
 - **No tests, no commit, no PR:** si la branch activa no puede ejecutar las pruebas requeridas con su entorno listo, se bloquea el handoff.
-- **No runtime verificado, no push:** si `setup-checkout-runtime.sh` y `verify-checkout-runtime.sh` no pasaron para ESE checkout/branch activo, no se puede testear, commitear, pushear ni abrir PR.
+- **Sin checks requeridos, no push:** si tests/lint/build aplicables no pasaron en ese checkout/branch activo, no se puede commitear, pushear ni abrir PR.
 
 ## Architecture
 
@@ -90,21 +90,14 @@ cd frontend && pnpm test && pnpm lint && pnpm build
 
 ## Trello
 
-- **Usar SIEMPRE la API REST de Trello directamente** (`curl` a `https://api.trello.com/1/...`), NO el MCP de Trello (tiene problemas con el token).
-- Credenciales en `.env.trello` en la raíz del proyecto.
+- **Usar SIEMPRE el MCP de Trello** para consultar y gestionar el tablero.
 - Tablero por defecto: **clinix-agent** (`69ccabd11d021eb19eae2829`).
-
-```bash
-# Ejemplo: obtener listas del tablero clinix-agent
-source .env.trello
-curl -s "https://api.trello.com/1/boards/$TRELLO_DEFAULT_BOARD_ID/lists?key=$TRELLO_API_KEY&token=$TRELLO_TOKEN&fields=name&filter=open"
-```
 
 ## Reference Docs (read when needed)
 
-| Document | When to read |
-|----------|-------------|
-| `PRD.md` | Understanding requirements |
-| `product-backlog.md` | Full backlog with TDD per ticket |
-| `DIAGRAM-CONVERSATION-FLOW.md` | How conversations work |
-| `DIAGRAM-AGENT-ARCHITECTURE.md` | Agent/sub-agent architecture |
+| Document                        | When to read                     |
+| ------------------------------- | -------------------------------- |
+| `PRD.md`                        | Understanding requirements       |
+| `product-backlog.md`            | Full backlog with TDD per ticket |
+| `DIAGRAM-CONVERSATION-FLOW.md`  | How conversations work           |
+| `DIAGRAM-AGENT-ARCHITECTURE.md` | Agent/sub-agent architecture     |
