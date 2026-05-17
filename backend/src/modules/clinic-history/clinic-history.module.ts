@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { PdfModule } from '../pdf/pdf.module';
 import { ClinicHistoryService } from './clinic-history.service';
 import {
   ClinicHistoryController,
@@ -6,6 +7,7 @@ import {
 } from './clinic-history.controller';
 
 @Module({
+  imports: [PdfModule],
   controllers: [ClinicHistoryController, PatientClinicHistoriesController],
   providers: [ClinicHistoryService],
   exports: [ClinicHistoryService],
