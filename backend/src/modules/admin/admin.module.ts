@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { AuditInterceptor } from 'src/core/interceptors/audit.interceptor';
 import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
 import { AuditModule } from '../audit/audit.module';
@@ -6,7 +8,7 @@ import { AuditModule } from '../audit/audit.module';
 @Module({
   imports: [AuditModule],
   controllers: [AdminController],
-  providers: [AdminService],
+  providers: [AdminService, AuditInterceptor, Reflector],
   exports: [AdminService],
 })
 export class AdminModule {}

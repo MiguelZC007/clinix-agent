@@ -16,7 +16,7 @@ import {
   ApiParam,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { User } from 'src/core/decorators/user.decorator';
+import { Audit } from 'src/core/decorators/audit.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from 'src/core/decorators/roles.decorator';
 import { Role } from 'src/core/enum/role.enum';
@@ -30,16 +30,6 @@ import {
   DoctorListQueryDto,
 } from './dto';
 
-interface UserContext {
-  id: string;
-  email: string;
-  name: string;
-  lastName: string;
-  phone: string;
-  doctor?: { id: string };
-  patient?: { id: string };
-}
-
 @ApiTags('Admin')
 @Controller('admin')
 @ApiBearerAuth('JWT-auth')
@@ -52,6 +42,7 @@ export class AdminController {
   ) {}
 
   @Post('doctors')
+  @Audit({ action: 'CREATE', entityType: 'Doctor' })
   @ApiOperation({ summary: 'Crear un nuevo doctor' })
   @ApiResponse({
     status: 201,
@@ -64,11 +55,8 @@ export class AdminController {
     description: 'Email, teléfono o licencia ya existe',
   })
   @ApiResponse({ status: 404, description: 'Especialidad no encontrada' })
-  createDoctor(
-    @Body() dto: CreateDoctorDto,
-    @User() user: UserContext,
-  ): Promise<DoctorResponseDto> {
-    return this.adminService.createDoctor(dto, user.id);
+  createDoctor(@Body() dto: CreateDoctorDto): Promise<DoctorResponseDto> {
+    return this.adminService.createDoctor(dto);
   }
 
   @Get('doctors')
@@ -99,6 +87,7 @@ export class AdminController {
   }
 
   @Patch('doctors/:id')
+  @Audit({ action: 'UPDATE', entityType: 'Doctor', entityIdParam: 'id' })
   @ApiOperation({ summary: 'Actualizar datos de un doctor' })
   @ApiParam({ name: 'id', description: 'ID del doctor' })
   @ApiResponse({
@@ -114,12 +103,12 @@ export class AdminController {
   updateDoctor(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateDoctorDto,
-    @User() user: UserContext,
   ): Promise<DoctorResponseDto> {
-    return this.adminService.updateDoctor(id, dto, user.id);
+    return this.adminService.updateDoctor(id, dto);
   }
 
   @Post('doctors/:id/deactivate')
+  @Audit({ action: 'DEACTIVATE', entityType: 'Doctor', entityIdParam: 'id' })
   @ApiOperation({ summary: 'Desactivar un doctor (soft delete)' })
   @ApiParam({ name: 'id', description: 'ID del doctor' })
   @ApiResponse({
@@ -131,12 +120,12 @@ export class AdminController {
   @ApiResponse({ status: 409, description: 'Doctor ya está inactivo' })
   deactivateDoctor(
     @Param('id', ParseUUIDPipe) id: string,
-    @User() user: UserContext,
   ): Promise<DoctorResponseDto> {
-    return this.adminService.deactivateDoctor(id, user.id);
+    return this.adminService.deactivateDoctor(id);
   }
 
   @Post('doctors/:id/activate')
+  @Audit({ action: 'ACTIVATE', entityType: 'Doctor', entityIdParam: 'id' })
   @ApiOperation({ summary: 'Reactivar un doctor' })
   @ApiParam({ name: 'id', description: 'ID del doctor' })
   @ApiResponse({
@@ -148,9 +137,8 @@ export class AdminController {
   @ApiResponse({ status: 409, description: 'Doctor ya está activo' })
   activateDoctor(
     @Param('id', ParseUUIDPipe) id: string,
-    @User() user: UserContext,
   ): Promise<DoctorResponseDto> {
-    return this.adminService.activateDoctor(id, user.id);
+    return this.adminService.activateDoctor(id);
   }
 
   @Get('audit-logs')

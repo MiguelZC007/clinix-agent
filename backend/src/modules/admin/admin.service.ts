@@ -2,11 +2,9 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  Logger,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { AuditService } from '../audit/audit.service';
 import {
   CreateDoctorDto,
   UpdateDoctorDto,
@@ -25,17 +23,9 @@ export interface DoctorListResultDto {
 
 @Injectable()
 export class AdminService {
-  private readonly logger = new Logger(AdminService.name);
+  constructor(private readonly prisma: PrismaService) {}
 
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly auditService: AuditService,
-  ) {}
-
-  async createDoctor(
-    dto: CreateDoctorDto,
-    adminUserId: string,
-  ): Promise<DoctorResponseDto> {
+  async createDoctor(dto: CreateDoctorDto): Promise<DoctorResponseDto> {
     const hashedPassword = dto.password
       ? await bcrypt.hash(dto.password, environment.SALT_ROUND)
       : undefined;
@@ -91,24 +81,7 @@ export class AdminService {
       });
     });
 
-    const response = this.mapToDoctorResponseFromUser(doctor);
-
-    try {
-      await this.auditService.log({
-        userId: adminUserId,
-        action: 'CREATE',
-        entityType: 'Doctor',
-        entityId: response.id,
-        newState: this.sanitizeForAudit(response),
-        result: 'SUCCESS',
-      });
-    } catch (auditError) {
-      this.logger.error(
-        `Failed to audit CREATE doctor: ${auditError instanceof Error ? auditError.message : 'unknown'}`,
-      );
-    }
-
-    return response;
+    return this.mapToDoctorResponseFromUser(doctor);
   }
 
   async findAllDoctors(
@@ -184,9 +157,8 @@ export class AdminService {
   async updateDoctor(
     id: string,
     dto: UpdateDoctorDto,
-    adminUserId: string,
   ): Promise<DoctorResponseDto> {
-    const existing = await this.findOneDoctor(id);
+    await this.findOneDoctor(id);
 
     if (dto.specialtyId) {
       const specialty = await this.prisma.specialty.findUnique({
@@ -232,31 +204,10 @@ export class AdminService {
       },
     });
 
-    const response = this.mapToDoctorResponse(updated);
-
-    try {
-      await this.auditService.log({
-        userId: adminUserId,
-        action: 'UPDATE',
-        entityType: 'Doctor',
-        entityId: id,
-        previousState: this.sanitizeForAudit(existing),
-        newState: this.sanitizeForAudit(response),
-        result: 'SUCCESS',
-      });
-    } catch (auditError) {
-      this.logger.error(
-        `Failed to audit UPDATE doctor: ${auditError instanceof Error ? auditError.message : 'unknown'}`,
-      );
-    }
-
-    return response;
+    return this.mapToDoctorResponse(updated);
   }
 
-  async deactivateDoctor(
-    id: string,
-    adminUserId: string,
-  ): Promise<DoctorResponseDto> {
+  async deactivateDoctor(id: string): Promise<DoctorResponseDto> {
     const existingRaw = await this.prisma.doctor.findUnique({
       where: { id },
       include: { user: true, specialty: true },
@@ -278,33 +229,10 @@ export class AdminService {
       include: { user: true, specialty: true },
     });
 
-    const response = this.mapToDoctorResponse(updated);
-
-    try {
-      await this.auditService.log({
-        userId: adminUserId,
-        action: 'DEACTIVATE',
-        entityType: 'Doctor',
-        entityId: id,
-        previousState: this.sanitizeForAudit(
-          this.mapToDoctorResponse(existingRaw),
-        ),
-        newState: this.sanitizeForAudit(response),
-        result: 'SUCCESS',
-      });
-    } catch (auditError) {
-      this.logger.error(
-        `Failed to audit DEACTIVATE doctor: ${auditError instanceof Error ? auditError.message : 'unknown'}`,
-      );
-    }
-
-    return response;
+    return this.mapToDoctorResponse(updated);
   }
 
-  async activateDoctor(
-    id: string,
-    adminUserId: string,
-  ): Promise<DoctorResponseDto> {
+  async activateDoctor(id: string): Promise<DoctorResponseDto> {
     const existingRaw = await this.prisma.doctor.findUnique({
       where: { id },
       include: { user: true, specialty: true },
@@ -326,27 +254,7 @@ export class AdminService {
       include: { user: true, specialty: true },
     });
 
-    const response = this.mapToDoctorResponse(updated);
-
-    try {
-      await this.auditService.log({
-        userId: adminUserId,
-        action: 'ACTIVATE',
-        entityType: 'Doctor',
-        entityId: id,
-        previousState: this.sanitizeForAudit(
-          this.mapToDoctorResponse(existingRaw),
-        ),
-        newState: this.sanitizeForAudit(response),
-        result: 'SUCCESS',
-      });
-    } catch (auditError) {
-      this.logger.error(
-        `Failed to audit ACTIVATE doctor: ${auditError instanceof Error ? auditError.message : 'unknown'}`,
-      );
-    }
-
-    return response;
+    return this.mapToDoctorResponse(updated);
   }
 
   private mapToDoctorResponse(
@@ -390,20 +298,6 @@ export class AdminService {
       isActive: (userRecord.isActive as boolean) ?? true,
       createdAt: (doctor?.createdAt as Date) ?? (userRecord.createdAt as Date),
       updatedAt: (doctor?.updatedAt as Date) ?? (userRecord.updatedAt as Date),
-    };
-  }
-
-  private sanitizeForAudit(dto: DoctorResponseDto): Record<string, unknown> {
-    return {
-      id: dto.id,
-      email: dto.email,
-      name: dto.name,
-      lastName: dto.lastName,
-      phone: dto.phone,
-      specialtyId: dto.specialtyId,
-      specialtyName: dto.specialtyName,
-      licenseNumber: dto.licenseNumber,
-      isActive: dto.isActive,
     };
   }
 }

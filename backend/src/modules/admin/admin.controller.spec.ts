@@ -7,20 +7,12 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { UpdateDoctorDto } from './dto/update-doctor.dto';
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { AUDIT_METADATA_KEY } from 'src/core/decorators/audit.decorator';
 
 describe('AdminController', () => {
   let controller: AdminController;
   let adminService: jest.Mocked<AdminService>;
   let auditService: jest.Mocked<AuditService>;
-
-  const mockUser = {
-    id: 'admin-uuid',
-    email: 'admin@test.com',
-    name: 'Admin',
-    lastName: 'Test',
-    phone: '+584241234567',
-    isAdmin: true,
-  };
 
   const mockDoctorResponse = {
     id: 'doctor-uuid',
@@ -88,10 +80,10 @@ describe('AdminController', () => {
 
       adminService.createDoctor.mockResolvedValue(mockDoctorResponse);
 
-      const result = await controller.createDoctor(dto, mockUser);
+      const result = await controller.createDoctor(dto);
 
       expect(result).toEqual(mockDoctorResponse);
-      expect(adminService.createDoctor).toHaveBeenCalledWith(dto, mockUser.id);
+      expect(adminService.createDoctor).toHaveBeenCalledWith(dto);
     });
 
     it('debe propagar ConflictException del servicio', async () => {
@@ -108,7 +100,7 @@ describe('AdminController', () => {
         new ConflictException('user-already-exists'),
       );
 
-      await expect(controller.createDoctor(dto, mockUser)).rejects.toThrow(
+      await expect(controller.createDoctor(dto)).rejects.toThrow(
         ConflictException,
       );
     });
@@ -164,17 +156,12 @@ describe('AdminController', () => {
 
       adminService.updateDoctor.mockResolvedValue(updatedResponse);
 
-      const result = await controller.updateDoctor(
-        'doctor-uuid',
-        dto,
-        mockUser,
-      );
+      const result = await controller.updateDoctor('doctor-uuid', dto);
 
       expect(result.licenseNumber).toBe('MP-99999');
       expect(adminService.updateDoctor).toHaveBeenCalledWith(
         'doctor-uuid',
         dto,
-        mockUser.id,
       );
     });
   });
@@ -184,13 +171,10 @@ describe('AdminController', () => {
       const deactivatedResponse = { ...mockDoctorResponse, isActive: false };
       adminService.deactivateDoctor.mockResolvedValue(deactivatedResponse);
 
-      const result = await controller.deactivateDoctor('doctor-uuid', mockUser);
+      const result = await controller.deactivateDoctor('doctor-uuid');
 
       expect(result.isActive).toBe(false);
-      expect(adminService.deactivateDoctor).toHaveBeenCalledWith(
-        'doctor-uuid',
-        mockUser.id,
-      );
+      expect(adminService.deactivateDoctor).toHaveBeenCalledWith('doctor-uuid');
     });
   });
 
@@ -198,13 +182,10 @@ describe('AdminController', () => {
     it('debe reactivar un doctor exitosamente', async () => {
       adminService.activateDoctor.mockResolvedValue(mockDoctorResponse);
 
-      const result = await controller.activateDoctor('doctor-uuid', mockUser);
+      const result = await controller.activateDoctor('doctor-uuid');
 
       expect(result.isActive).toBe(true);
-      expect(adminService.activateDoctor).toHaveBeenCalledWith(
-        'doctor-uuid',
-        mockUser.id,
-      );
+      expect(adminService.activateDoctor).toHaveBeenCalledWith('doctor-uuid');
     });
   });
 
@@ -248,6 +229,41 @@ describe('AdminController', () => {
           userId: 'user-uuid',
         }),
       );
+    });
+  });
+
+  describe('audit metadata', () => {
+    it('debe marcar createDoctor como endpoint auditado', () => {
+      const metadata = Reflect.getMetadata(
+        AUDIT_METADATA_KEY,
+        AdminController.prototype.createDoctor,
+      ) as { action: string; entityType: string } | undefined;
+
+      expect(metadata).toEqual({ action: 'CREATE', entityType: 'Doctor' });
+    });
+
+    it('debe marcar updateDoctor como endpoint auditado con entityId', () => {
+      const metadata = Reflect.getMetadata(
+        AUDIT_METADATA_KEY,
+        AdminController.prototype.updateDoctor,
+      ) as
+        | { action: string; entityType: string; entityIdParam?: string }
+        | undefined;
+
+      expect(metadata).toEqual({
+        action: 'UPDATE',
+        entityType: 'Doctor',
+        entityIdParam: 'id',
+      });
+    });
+
+    it('no debe auditar consultas de logs', () => {
+      expect(
+        Reflect.getMetadata(
+          AUDIT_METADATA_KEY,
+          AdminController.prototype.findAuditLogs,
+        ),
+      ).toBeUndefined();
     });
   });
 

@@ -2,7 +2,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { AuditService } from '../audit/audit.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   createMockPrismaService,
@@ -18,7 +17,6 @@ jest.mock('bcrypt', () => ({
 describe('AdminService', () => {
   let service: AdminService;
   let prisma: MockPrismaService;
-  let auditService: jest.Mocked<AuditService>;
 
   const mockUser = {
     id: 'user-uuid',
@@ -51,36 +49,11 @@ describe('AdminService', () => {
   beforeEach(async () => {
     prisma = createMockPrismaService();
 
-    const mockAuditService = {
-      log: jest.fn().mockResolvedValue({
-        id: 'audit-uuid',
-        userId: 'admin-uuid',
-        userName: 'Admin Test',
-        action: 'CREATE',
-        entityType: 'Doctor',
-        entityId: 'doctor-uuid',
-        previousState: null,
-        newState: {},
-        result: 'SUCCESS',
-        errorMessage: null,
-        ipAddress: null,
-        userAgent: null,
-        createdAt: new Date(),
-      }),
-      findAll: jest.fn(),
-      findOne: jest.fn(),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AdminService,
-        { provide: PrismaService, useValue: prisma },
-        { provide: AuditService, useValue: mockAuditService },
-      ],
+      providers: [AdminService, { provide: PrismaService, useValue: prisma }],
     }).compile();
 
     service = module.get<AdminService>(AdminService);
-    auditService = module.get(AuditService);
   });
 
   afterEach(() => {
@@ -129,19 +102,11 @@ describe('AdminService', () => {
         },
       );
 
-      const result = await service.createDoctor(createDto, 'admin-uuid');
+      const result = await service.createDoctor(createDto);
 
       expect(result).toBeDefined();
       expect(result.email).toBe(createDto.email);
       expect(result.licenseNumber).toBe(createDto.licenseNumber);
-      expect(auditService.log).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId: 'admin-uuid',
-          action: 'CREATE',
-          entityType: 'Doctor',
-          result: 'SUCCESS',
-        }),
-      );
     });
 
     it('debe lanzar ConflictException si el email ya existe', async () => {
@@ -166,7 +131,7 @@ describe('AdminService', () => {
       );
 
       await expect(
-        service.createDoctor(createDto, 'admin-uuid'),
+        service.createDoctor(createDto),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -192,7 +157,7 @@ describe('AdminService', () => {
       );
 
       await expect(
-        service.createDoctor(createDto, 'admin-uuid'),
+        service.createDoctor(createDto),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -216,7 +181,7 @@ describe('AdminService', () => {
       );
 
       await expect(
-        service.createDoctor(createDto, 'admin-uuid'),
+        service.createDoctor(createDto),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -307,29 +272,17 @@ describe('AdminService', () => {
       });
 
       const dto: UpdateDoctorDto = { licenseNumber: 'MP-99999' };
-      const result = await service.updateDoctor(
-        'doctor-uuid',
-        dto,
-        'admin-uuid',
-      );
+      const result = await service.updateDoctor('doctor-uuid', dto);
 
       expect(result).toBeDefined();
       expect(prisma.doctor.update).toHaveBeenCalled();
-      expect(auditService.log).toHaveBeenCalledWith(
-        expect.objectContaining({
-          action: 'UPDATE',
-          entityType: 'Doctor',
-          entityId: 'doctor-uuid',
-          result: 'SUCCESS',
-        }),
-      );
     });
 
     it('debe lanzar NotFoundException si el doctor no existe', async () => {
       prisma.doctor.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.updateDoctor('non-existent', {}, 'admin-uuid'),
+        service.updateDoctor('non-existent', {}),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -342,7 +295,7 @@ describe('AdminService', () => {
 
       const dto: UpdateDoctorDto = { licenseNumber: 'MP-DUPLICATE' };
       await expect(
-        service.updateDoctor('doctor-uuid', dto, 'admin-uuid'),
+        service.updateDoctor('doctor-uuid', dto),
       ).rejects.toThrow(ConflictException);
     });
   });
@@ -362,10 +315,7 @@ describe('AdminService', () => {
         .mockResolvedValueOnce(deactivatedDoctor);
       prisma.doctor.update.mockResolvedValue(deactivatedDoctor);
 
-      const result = await service.deactivateDoctor(
-        'doctor-uuid',
-        'admin-uuid',
-      );
+      const result = await service.deactivateDoctor('doctor-uuid');
 
       expect(result.isActive).toBe(false);
       expect(prisma.doctor.update).toHaveBeenCalledWith({
@@ -373,14 +323,6 @@ describe('AdminService', () => {
         data: { user: { update: { isActive: false } } },
         include: { user: true, specialty: true },
       });
-      expect(auditService.log).toHaveBeenCalledWith(
-        expect.objectContaining({
-          action: 'DEACTIVATE',
-          entityType: 'Doctor',
-          entityId: 'doctor-uuid',
-          result: 'SUCCESS',
-        }),
-      );
     });
 
     it('debe lanzar ConflictException si ya está inactivo', async () => {
@@ -390,7 +332,7 @@ describe('AdminService', () => {
       });
 
       await expect(
-        service.deactivateDoctor('doctor-uuid', 'admin-uuid'),
+        service.deactivateDoctor('doctor-uuid'),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -398,7 +340,7 @@ describe('AdminService', () => {
       prisma.doctor.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.deactivateDoctor('doctor-uuid', 'admin-uuid'),
+        service.deactivateDoctor('doctor-uuid'),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -418,7 +360,7 @@ describe('AdminService', () => {
         .mockResolvedValueOnce(activatedDoctor);
       prisma.doctor.update.mockResolvedValue(activatedDoctor);
 
-      const result = await service.activateDoctor('doctor-uuid', 'admin-uuid');
+      const result = await service.activateDoctor('doctor-uuid');
 
       expect(result.isActive).toBe(true);
       expect(prisma.doctor.update).toHaveBeenCalledWith({
@@ -426,14 +368,6 @@ describe('AdminService', () => {
         data: { user: { update: { isActive: true } } },
         include: { user: true, specialty: true },
       });
-      expect(auditService.log).toHaveBeenCalledWith(
-        expect.objectContaining({
-          action: 'ACTIVATE',
-          entityType: 'Doctor',
-          entityId: 'doctor-uuid',
-          result: 'SUCCESS',
-        }),
-      );
     });
 
     it('debe lanzar ConflictException si ya está activo', async () => {
@@ -443,7 +377,7 @@ describe('AdminService', () => {
       });
 
       await expect(
-        service.activateDoctor('doctor-uuid', 'admin-uuid'),
+        service.activateDoctor('doctor-uuid'),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -451,7 +385,7 @@ describe('AdminService', () => {
       prisma.doctor.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.activateDoctor('doctor-uuid', 'admin-uuid'),
+        service.activateDoctor('doctor-uuid'),
       ).rejects.toThrow(NotFoundException);
     });
   });
