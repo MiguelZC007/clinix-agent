@@ -1,7 +1,7 @@
 ---
 name: sdd-explore
 description: Explore an SDD change idea before proposal.
-model: opencode-go/mimo-v2.5
+model: opencode-go/deepseek-v4-pro
 tools: read, grep, glob, webfetch
 inheritProjectContext: true
 ---

@@ -51,6 +51,7 @@ describe('OpenAI structure_anamnesis integration', () => {
         getOrCreateActiveConversation: jest.fn(),
         preflightContextBudget: jest.fn(),
         addMessage: jest.fn(),
+        saveStructuredDraft: jest.fn(),
       } as never,
       { findTodaysByDoctor: jest.fn() } as never,
       clinicHistoryServiceMock as never,
@@ -65,6 +66,7 @@ describe('OpenAI structure_anamnesis integration', () => {
     });
 
     await openaiService['executeToolFunction'](
+      'conversation-1',
       'doctor-1',
       'structure_anamnesis',
       {
@@ -76,6 +78,7 @@ describe('OpenAI structure_anamnesis integration', () => {
     );
 
     await openaiService['executeToolFunction'](
+      'conversation-1',
       'doctor-1',
       'structure_anamnesis',
       {
@@ -124,6 +127,7 @@ describe('OpenAI structure_anamnesis integration', () => {
     });
 
     const result = await openaiService['executeToolFunction'](
+      'conversation-1',
       'doctor-1',
       'structure_anamnesis',
       {
@@ -185,6 +189,7 @@ describe('OpenAI structure_anamnesis integration', () => {
     });
 
     const structured = await openaiService['executeToolFunction'](
+      'conversation-1',
       'doctor-1',
       'structure_anamnesis',
       {
@@ -196,6 +201,7 @@ describe('OpenAI structure_anamnesis integration', () => {
     );
 
     const persistenceResult = (await openaiService['executeToolFunction'](
+      'conversation-1',
       'doctor-1',
       'create_clinic_history',
       {
