@@ -6,6 +6,8 @@ import {
   Param,
   Query,
   ParseUUIDPipe,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -25,12 +27,16 @@ import { CreateClinicHistoryDto } from './dto/create-clinic-history.dto';
 import { FindAllClinicHistoriesQueryDto } from './dto/find-all-clinic-histories-query.dto';
 import { ClinicHistoryResponseDto } from './dto/clinic-history-response.dto';
 import { PatientClinicHistoryFilterOptionsDto } from './dto/patient-clinic-history-filter-options.dto';
+import { PdfService } from '../pdf/pdf.service';
 
 @ApiTags('Clinic Histories')
 @ApiBearerAuth('JWT-auth')
 @Controller('clinic-histories')
 export class ClinicHistoryController {
-  constructor(private readonly clinicHistoryService: ClinicHistoryService) {}
+  constructor(
+    private readonly clinicHistoryService: ClinicHistoryService,
+    private readonly pdfService: PdfService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Crear una nueva historia clínica' })
@@ -78,6 +84,42 @@ export class ClinicHistoryController {
   ): Promise<ClinicHistoryListResultDto> {
     const doctorId = getDoctorId(user);
     return this.clinicHistoryService.findAll(query, doctorId);
+  }
+
+  @Get(':id/pdf')
+  @ApiOperation({ summary: 'Descargar una historia clínica en PDF' })
+  @ApiParam({ name: 'id', description: 'ID de la historia clínica (UUID)' })
+  @ApiResponse({
+    status: 200,
+    description: 'PDF de la historia clínica',
+    content: {
+      'application/pdf': {
+        schema: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Historia clínica no encontrada' })
+  async downloadPdf(
+    @Param('id', ParseUUIDPipe) id: string,
+    @User() user: unknown,
+    @Res({ passthrough: true })
+    response: {
+      setHeader(name: string, value: string): void;
+    },
+  ): Promise<StreamableFile> {
+    const doctorId = getDoctorId(user);
+    const pdfBuffer = await this.pdfService.generateClinicHistoryPdf(
+      id,
+      doctorId,
+    );
+
+    response.setHeader('Content-Type', 'application/pdf');
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="clinic-history-${id}.pdf"`,
+    );
+
+    return new StreamableFile(pdfBuffer);
   }
 
   @Get(':id')

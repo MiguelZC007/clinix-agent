@@ -13,6 +13,7 @@ import {
   ClinicHistoryListItemDto,
   ClinicHistoryResponseDto,
 } from './dto/clinic-history-response.dto';
+import { PdfService } from '../pdf/pdf.service';
 
 describe('ClinicHistoryController', () => {
   let controller: ClinicHistoryController;
@@ -59,6 +60,7 @@ describe('ClinicHistoryController', () => {
   };
 
   let service: MockClinicHistoryService;
+  let pdfService: { generateClinicHistoryPdf: jest.Mock };
 
   const mockClinicHistoryResponse: ClinicHistoryResponseDto = {
     id: 'clinic-history-uuid',
@@ -145,10 +147,16 @@ describe('ClinicHistoryController', () => {
         .fn()
         .mockResolvedValue({ doctors: [], specialties: [] }),
     };
+    pdfService = {
+      generateClinicHistoryPdf: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ClinicHistoryController, PatientClinicHistoriesController],
-      providers: [{ provide: ClinicHistoryService, useValue: mockService }],
+      providers: [
+        { provide: ClinicHistoryService, useValue: mockService },
+        { provide: PdfService, useValue: pdfService },
+      ],
     }).compile();
 
     controller = module.get<ClinicHistoryController>(ClinicHistoryController);
@@ -212,6 +220,30 @@ describe('ClinicHistoryController', () => {
       expect(service.findAll).toHaveBeenCalledWith(query, 'doctor-uuid');
       expect(result).toEqual(paginated);
       expect(result.items).toHaveLength(1);
+    });
+  });
+
+  describe('downloadPdf', () => {
+    it('debe delegar la generación del PDF al servicio y devolver streamable file', async () => {
+      pdfService.generateClinicHistoryPdf.mockResolvedValue(Buffer.from('pdf'));
+      const response = { setHeader: jest.fn() };
+      const user = { doctor: { id: 'doctor-uuid' } };
+
+      const result = await controller.downloadPdf(
+        'clinic-history-uuid',
+        user,
+        response,
+      );
+
+      expect(pdfService.generateClinicHistoryPdf).toHaveBeenCalledWith(
+        'clinic-history-uuid',
+        'doctor-uuid',
+      );
+      expect(response.setHeader).toHaveBeenCalledWith(
+        'Content-Type',
+        'application/pdf',
+      );
+      expect(result).toBeDefined();
     });
   });
 
