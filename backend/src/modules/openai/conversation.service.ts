@@ -16,6 +16,21 @@ interface ConversationMessage {
   content: string;
 }
 
+export interface StructuredDraftState {
+  status: 'pending_confirmation' | 'needs_correction';
+  sourceText: string;
+  mode: 'WITH_APPOINTMENT' | 'WITHOUT_APPOINTMENT';
+  appointmentId?: string;
+  payload?: Record<string, unknown>;
+  error?: {
+    category: string;
+    code: string;
+    message: string;
+    fields?: string[];
+    details?: Array<{ path: string; message: string }>;
+  };
+}
+
 interface PendingConversationMessage {
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string | null;
@@ -294,6 +309,20 @@ export class ConversationService {
     }
   }
 
+  async saveStructuredDraft(
+    conversationId: string,
+    draft: StructuredDraftState | null,
+  ): Promise<void> {
+    await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        structuredDraft: draft as never,
+        lastActivityAt: new Date(),
+        model: environment.OPENAI_MODEL,
+      },
+    });
+  }
+
   async getConversationById(
     conversationId: string,
   ): Promise<Conversation | null> {
@@ -521,6 +550,16 @@ export class ConversationService {
       });
     }
 
+    const structuredDraft = this.formatStructuredDraftSystemMessage(
+      conversation.structuredDraft,
+    );
+    if (structuredDraft) {
+      messages.push({
+        role: 'system',
+        content: structuredDraft,
+      });
+    }
+
     for (const message of conversation.messages) {
       messages.push({
         role: message.role as 'user' | 'assistant',
@@ -542,10 +581,17 @@ export class ConversationService {
           model,
         )
       : 0;
+    const structuredDraftMessage = this.formatStructuredDraftSystemMessage(
+      conversation.structuredDraft,
+    );
+    const structuredDraftTokens = structuredDraftMessage
+      ? this.estimateTokenCount(structuredDraftMessage, model)
+      : 0;
 
     return (
       this.estimateTokenCount(conversation.systemPrompt, model) +
       summaryTokens +
+      structuredDraftTokens +
       conversation.messages.reduce(
         (total, message) =>
           total +
@@ -636,6 +682,21 @@ export class ConversationService {
     });
 
     return response.choices[0]?.message?.content || existingSummary || '';
+  }
+
+  private formatStructuredDraftSystemMessage(
+    structuredDraft: unknown,
+  ): string | null {
+    if (!structuredDraft || typeof structuredDraft !== 'object') {
+      return null;
+    }
+
+    return [
+      'BORRADOR_ESTRUCTURADO_ACTIVO:',
+      'Si el médico confirma, persiste create_clinic_history usando este borrador sin volver a pedir toda la anamnesis.',
+      'Si el médico corrige, actualiza o vuelve a estructurar antes de persistir.',
+      JSON.stringify(structuredDraft),
+    ].join('\n');
   }
 
   private async requireConversationWithMessages(

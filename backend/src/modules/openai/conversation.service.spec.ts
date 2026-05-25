@@ -55,6 +55,7 @@ describe('ConversationService', () => {
     model: 'gpt-4',
     systemPrompt: 'Prompt clínico base',
     summary: null,
+    structuredDraft: null,
     contextTokenLimitOverride: null,
     mode: 'LLM' as const,
     isDraft: true,
@@ -242,6 +243,30 @@ describe('ConversationService', () => {
     expect(withMetadata.contextTokensUsed).toBeGreaterThan(
       withoutMetadata.contextTokensUsed,
     );
+  });
+
+  it('inyecta el borrador estructurado activo como mensaje de sistema', async () => {
+    prisma.conversation.findUnique.mockResolvedValue({
+      ...baseConversation,
+      structuredDraft: {
+        status: 'pending_confirmation',
+        sourceText: 'Paciente con dolor lumbar',
+        mode: 'WITHOUT_APPOINTMENT',
+        payload: { consultationReason: 'Dolor lumbar' },
+      },
+      messages: [],
+    });
+
+    const result = await service.preflightContextBudget(baseConversation.id);
+    const draftMessage = result.messages.find(
+      (message) =>
+        message.role === 'system' &&
+        message.content.includes('BORRADOR_ESTRUCTURADO_ACTIVO'),
+    );
+
+    expect(draftMessage).toBeDefined();
+    expect(draftMessage?.content).toContain('pending_confirmation');
+    expect(draftMessage?.content).toContain('Dolor lumbar');
   });
 
   it('preserva continuidad del resumen y la ventana reciente tras compactar', async () => {

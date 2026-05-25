@@ -119,21 +119,22 @@ enum ConversationMode {
 }
 
 model Conversation {
-  id                  String           @id @default(uuid())
-  model               String
-  systemPrompt        String
-  summary             String?
+  id                        String           @id @default(uuid())
+  model                     String
+  systemPrompt              String
+  summary                   String?
+  structuredDraft           Json?
   contextTokenLimitOverride Int?
-  mode                ConversationMode @default(LLM)
-  isDraft             Boolean          @default(true)
-  lastSavedAt         DateTime?
-  lastActivityAt      DateTime         @default(now())
-  isActive            Boolean          @default(true)
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
-  doctorId            String
-  doctor              Doctor           @relation(fields: [doctorId], references: [id])
-  messages            Message[]
+  mode                      ConversationMode @default(LLM)
+  isDraft                   Boolean          @default(true)
+  lastSavedAt               DateTime?
+  lastActivityAt            DateTime         @default(now())
+  isActive                  Boolean          @default(true)
+  createdAt                 DateTime         @default(now())
+  updatedAt                 DateTime         @updatedAt
+  doctorId                  String
+  doctor                    Doctor           @relation(fields: [doctorId], references: [id])
+  messages                  Message[]
 }
 
 model Message {

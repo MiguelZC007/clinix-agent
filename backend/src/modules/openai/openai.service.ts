@@ -15,6 +15,7 @@ import OpenAI from 'openai';
 import {
   ContextBudgetExceededError,
   ConversationService,
+  StructuredDraftState,
 } from './conversation.service';
 import { AppointmentService } from '../appointment/appointment.service';
 import { ClinicHistoryService } from '../clinic-history/clinic-history.service';
@@ -184,6 +185,7 @@ export class OpenaiService {
 
     // Execute initial tool calls
     const toolResults = await this.executeToolCalls(
+      conversationId,
       assistantMessage.tool_calls || [],
       doctorId,
     );
@@ -235,6 +237,7 @@ export class OpenaiService {
 
       // Execute new tool calls and append results
       const newToolResults = await this.executeToolCalls(
+        conversationId,
         followUpMessage.tool_calls,
         doctorId,
       );
@@ -319,6 +322,7 @@ export class OpenaiService {
   }
 
   private async executeToolCalls(
+    conversationId: string,
     toolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[],
     doctorId: string,
   ): Promise<Array<OpenAI.Chat.Completions.ChatCompletionToolMessageParam>> {
@@ -341,6 +345,7 @@ export class OpenaiService {
       let content: string;
       try {
         const result = await this.executeToolFunction(
+          conversationId,
           doctorId,
           functionName,
           functionArgs,
@@ -834,6 +839,7 @@ export class OpenaiService {
   }
 
   private async executeToolFunction(
+    conversationId: string,
     doctorId: string,
     functionName: string,
     args: Record<string, unknown>,
@@ -1192,7 +1198,15 @@ export class OpenaiService {
             throw new ForbiddenException('appointment-not-owned-by-doctor');
           }
           const dto = await this.mapCreateClinicHistoryArgsToDto(args);
-          return this.clinicHistoryService.create(dto, doctorId);
+          const persisted = await this.clinicHistoryService.create(
+            dto,
+            doctorId,
+          );
+          await this.conversationService.saveStructuredDraft(
+            conversationId,
+            null,
+          );
+          return persisted;
         }
         const patientIdArg =
           typeof args.patientId === 'string' && args.patientId.trim()
@@ -1272,20 +1286,27 @@ export class OpenaiService {
             patientNumberArg,
             specialtyCodeArg,
           );
-        return this.clinicHistoryService.createWithoutAppointment(
-          doctorId,
-          dtoWithoutAppointment,
+        const persisted =
+          await this.clinicHistoryService.createWithoutAppointment(
+            doctorId,
+            dtoWithoutAppointment,
+          );
+        await this.conversationService.saveStructuredDraft(
+          conversationId,
+          null,
         );
+        return persisted;
       }
 
       case 'structure_anamnesis': {
         const text = typeof args.text === 'string' ? args.text : '';
-        return this.structuringService.structureAnamnesis({
+        const mode =
+          args.mode === 'WITH_APPOINTMENT'
+            ? 'WITH_APPOINTMENT'
+            : 'WITHOUT_APPOINTMENT';
+        const result = await this.structuringService.structureAnamnesis({
           text,
-          mode:
-            args.mode === 'WITH_APPOINTMENT'
-              ? 'WITH_APPOINTMENT'
-              : 'WITHOUT_APPOINTMENT',
+          mode,
           appointmentId:
             typeof args.appointmentId === 'string'
               ? args.appointmentId
@@ -1311,6 +1332,35 @@ export class OpenaiService {
                 : undefined,
           },
         });
+
+        const draft: StructuredDraftState = result.ok
+          ? {
+              status: 'pending_confirmation',
+              sourceText: text,
+              mode,
+              appointmentId:
+                typeof args.appointmentId === 'string'
+                  ? args.appointmentId
+                  : undefined,
+              payload: result.data as unknown as Record<string, unknown>,
+            }
+          : {
+              status: 'needs_correction',
+              sourceText: text,
+              mode,
+              appointmentId:
+                typeof args.appointmentId === 'string'
+                  ? args.appointmentId
+                  : undefined,
+              error: result.error,
+            };
+
+        await this.conversationService.saveStructuredDraft(
+          conversationId,
+          draft,
+        );
+
+        return result;
       }
 
       case 'get_all_clinic_histories':

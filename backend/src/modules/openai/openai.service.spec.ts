@@ -51,6 +51,7 @@ interface MockConversationService {
   getOrCreateActiveConversation: jest.Mock;
   preflightContextBudget: jest.Mock;
   addMessage: jest.Mock;
+  saveStructuredDraft: jest.Mock;
 }
 
 interface MockClinicHistoryService {
@@ -115,6 +116,7 @@ describe('OpenaiService budget preflight', () => {
         contextTokenLimitOverride: null,
       }),
       addMessage: jest.fn().mockResolvedValue({ id: 'msg-1' }),
+      saveStructuredDraft: jest.fn().mockResolvedValue(undefined),
     };
 
     service = new OpenaiService(
@@ -149,6 +151,11 @@ describe('OpenaiService budget preflight', () => {
             role: 'system',
             content:
               'Resumen de la conversación anterior:\nResumen actualizado',
+          },
+          {
+            role: 'system',
+            content:
+              'BORRADOR_ESTRUCTURADO_ACTIVO:\nSi el médico confirma, persiste create_clinic_history usando este borrador sin volver a pedir toda la anamnesis.\nSi el médico corrige, actualiza o vuelve a estructurar antes de persistir.\n{"status":"pending_confirmation","payload":{"consultationReason":"Dolor lumbar"}}',
           },
           { role: 'user', content: 'Contexto compacto vigente' },
         ],
@@ -244,6 +251,13 @@ describe('OpenaiService budget preflight', () => {
         }),
       ]),
     );
+    const draftSystemMessage = secondRequest.messages.find(
+      (message) =>
+        message.role === 'system' &&
+        typeof message.content === 'string' &&
+        message.content.includes('BORRADOR_ESTRUCTURADO_ACTIVO'),
+    );
+    expect(draftSystemMessage).toBeDefined();
     expect(secondRequest.messages).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -300,6 +314,7 @@ describe('OpenaiService clinic history prescription mapping', () => {
   let prisma: MockPrisma;
   let clinicHistoryService: MockClinicHistoryService;
   let structuringService: MockStructuringService;
+  let conversationService: MockConversationService;
 
   const createService = () => {
     prisma = {
@@ -334,14 +349,17 @@ describe('OpenaiService clinic history prescription mapping', () => {
       structureAnamnesis: jest.fn(),
     };
 
+    conversationService = {
+      findDoctorByPhone: jest.fn(),
+      getOrCreateActiveConversation: jest.fn(),
+      preflightContextBudget: jest.fn(),
+      addMessage: jest.fn(),
+      saveStructuredDraft: jest.fn(),
+    };
+
     return new OpenaiService(
       prisma as never,
-      {
-        findDoctorByPhone: jest.fn(),
-        getOrCreateActiveConversation: jest.fn(),
-        preflightContextBudget: jest.fn(),
-        addMessage: jest.fn(),
-      } as never,
+      conversationService as never,
       { findTodaysByDoctor: jest.fn() } as never,
       clinicHistoryService as never,
       structuringService as never,
@@ -450,6 +468,7 @@ describe('OpenaiService clinic history prescription mapping', () => {
       clinicHistoryService.create.mockResolvedValue({ id: 'history-1' });
 
       const result = await service['executeToolFunction'](
+        'conversation-uuid',
         'doctor-uuid',
         'create_clinic_history',
         {
@@ -591,6 +610,7 @@ describe('OpenaiService clinic history prescription mapping', () => {
       });
 
       const result = await service['executeToolFunction'](
+        'conversation-uuid',
         'doctor-uuid',
         'structure_anamnesis',
         {
@@ -613,6 +633,16 @@ describe('OpenaiService clinic history prescription mapping', () => {
         ok: true,
         data: { consultationReason: 'ok' },
       });
+      expect(conversationService.saveStructuredDraft).toHaveBeenCalledWith(
+        'conversation-uuid',
+        {
+          status: 'pending_confirmation',
+          sourceText: 'Paciente con dolor lumbar',
+          mode: 'WITHOUT_APPOINTMENT',
+          appointmentId: undefined,
+          payload: { consultationReason: 'ok' },
+        },
+      );
     });
 
     it('retorna fallo normalizado sin persistir cuando structuring falla', async () => {
@@ -631,6 +661,7 @@ describe('OpenaiService clinic history prescription mapping', () => {
       });
 
       const result = await service['executeToolFunction'](
+        'conversation-uuid',
         'doctor-uuid',
         'structure_anamnesis',
         {
@@ -660,6 +691,21 @@ describe('OpenaiService clinic history prescription mapping', () => {
           fields: ['consultationReason'],
         },
       });
+      expect(conversationService.saveStructuredDraft).toHaveBeenCalledWith(
+        'conversation-uuid',
+        {
+          status: 'needs_correction',
+          sourceText: 'Texto no válido',
+          mode: 'WITH_APPOINTMENT',
+          appointmentId: '550e8400-e29b-41d4-a716-446655440003',
+          error: {
+            category: 'SEMANTIC_VALIDATION',
+            code: 'DTO_VALIDATION_FAILED',
+            message: 'invalid',
+            fields: ['consultationReason'],
+          },
+        },
+      );
     });
   });
 });
