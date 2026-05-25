@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { render, screen } from "@/__tests__/test-utils";
 import { MOCK_PATIENTS } from "../../__mocks__/patients.mock";
 import { PatientForm } from "../PatientForm";

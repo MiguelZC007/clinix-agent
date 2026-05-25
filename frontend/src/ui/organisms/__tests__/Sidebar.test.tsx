@@ -1,18 +1,27 @@
 import React from "react";
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { render, screen } from "@/__tests__/test-utils";
 import type * as I18nNav from "@/i18n/navigation";
 import { usePathname } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth/hooks";
+import type { UserRole } from "@/lib/auth/types";
 import { Sidebar } from "../Sidebar";
 
 const mockLogout = vi.fn();
-const mockUser = {
+const mockUser: {
+  id: string;
+  name: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  role: UserRole;
+} = {
   id: "1",
   name: "María",
   lastName: "García",
   email: "maria@clinica.com",
   phone: "+123",
+  role: "DOCTOR",
 };
 vi.mock("@/lib/auth/hooks", () => ({
   useAuth: vi.fn(),
@@ -97,7 +106,7 @@ describe("Sidebar", () => {
 
   it("no muestra Dr. Usuario ni doctor@clinica.com cuando user es null", () => {
     vi.mocked(useAuth).mockReturnValue({
-      user: null,
+      user: undefined,
       logout: mockLogout,
       isAuthenticated: false,
       isLoading: false,

@@ -18,7 +18,10 @@ describe("ClinicalHistoryForm", () => {
   it("muestra errores de validacion", async () => {
     render(<ClinicalHistoryForm {...defaultProps} />);
     const buttons = screen.getAllByRole("button");
-    const submitButton = buttons.find((btn) => btn.type === "submit");
+    const submitButton = buttons.find(
+      (btn): btn is HTMLButtonElement =>
+        btn instanceof HTMLButtonElement && btn.type === "submit",
+    );
     if (submitButton) {
       await submitButton.click();
     }
@@ -27,7 +30,10 @@ describe("ClinicalHistoryForm", () => {
   it("muestra loading cuando isLoading es true", () => {
     render(<ClinicalHistoryForm {...defaultProps} isLoading={true} />);
     const buttons = screen.getAllByRole("button");
-    const submitButton = buttons.find((btn) => btn.type === "submit");
+    const submitButton = buttons.find(
+      (btn): btn is HTMLButtonElement =>
+        btn instanceof HTMLButtonElement && btn.type === "submit",
+    );
     if (submitButton) {
       expect(submitButton).toBeDisabled();
     }
