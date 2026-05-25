@@ -81,7 +81,6 @@ cd frontend && pnpm test && pnpm lint && pnpm build
 - **Checkout estricto:** una vez seleccionado el ticket, TODO el trabajo real debe hacerse desde el checkout activo de esa branch. Nada de mezclar cambios en otra branch o fuera del repo raíz.
 - **Runtime activo por branch/ticket:** cada branch debe verificar env, base de datos y puertos libres antes de ejecutar servicios o E2E.
 - **No tests, no commit, no PR:** si la branch activa no puede ejecutar las pruebas requeridas con su entorno listo, se bloquea el handoff.
-- **develop es la única base:** todo ticket, branch y PR parte de `develop` y apunta a `develop`. `main` es solo para releases controlados. NO negociable.
 - **Sin checks requeridos, no push:** si tests/lint/build aplicables no pasaron en ese checkout/branch activo, no se puede commitear, pushear ni abrir PR.
 
 ## Architecture

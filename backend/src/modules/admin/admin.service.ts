@@ -229,7 +229,27 @@ export class AdminService {
       include: { user: true, specialty: true },
     });
 
-    return this.mapToDoctorResponse(updated);
+    const response = this.mapToDoctorResponse(updated);
+
+    try {
+      await this.auditService.log({
+        userId: adminUserId,
+        action: 'DEACTIVATE',
+        entityType: 'Doctor',
+        entityId: id,
+        previousState: this.sanitizeForAudit(
+          this.mapToDoctorResponse(existingRaw),
+        ),
+        newState: this.sanitizeForAudit(response),
+        result: 'SUCCESS',
+      });
+    } catch (auditError) {
+      this.logger.error(
+        `Failed to audit DEACTIVATE doctor: ${auditError instanceof Error ? auditError.message : 'unknown'}`,
+      );
+    }
+
+    return response;
   }
 
   async activateDoctor(id: string): Promise<DoctorResponseDto> {
@@ -254,7 +274,27 @@ export class AdminService {
       include: { user: true, specialty: true },
     });
 
-    return this.mapToDoctorResponse(updated);
+    const response = this.mapToDoctorResponse(updated);
+
+    try {
+      await this.auditService.log({
+        userId: adminUserId,
+        action: 'ACTIVATE',
+        entityType: 'Doctor',
+        entityId: id,
+        previousState: this.sanitizeForAudit(
+          this.mapToDoctorResponse(existingRaw),
+        ),
+        newState: this.sanitizeForAudit(response),
+        result: 'SUCCESS',
+      });
+    } catch (auditError) {
+      this.logger.error(
+        `Failed to audit ACTIVATE doctor: ${auditError instanceof Error ? auditError.message : 'unknown'}`,
+      );
+    }
+
+    return response;
   }
 
   private mapToDoctorResponse(
@@ -298,6 +338,20 @@ export class AdminService {
       isActive: (userRecord.isActive as boolean) ?? true,
       createdAt: (doctor?.createdAt as Date) ?? (userRecord.createdAt as Date),
       updatedAt: (doctor?.updatedAt as Date) ?? (userRecord.updatedAt as Date),
+    };
+  }
+
+  private sanitizeForAudit(dto: DoctorResponseDto): Record<string, unknown> {
+    return {
+      id: dto.id,
+      email: dto.email,
+      name: dto.name,
+      lastName: dto.lastName,
+      phone: dto.phone,
+      specialtyId: dto.specialtyId,
+      specialtyName: dto.specialtyName,
+      licenseNumber: dto.licenseNumber,
+      isActive: dto.isActive,
     };
   }
 }

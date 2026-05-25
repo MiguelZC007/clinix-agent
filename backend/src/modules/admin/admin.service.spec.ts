@@ -272,7 +272,11 @@ describe('AdminService', () => {
       });
 
       const dto: UpdateDoctorDto = { licenseNumber: 'MP-99999' };
-      const result = await service.updateDoctor('doctor-uuid', dto);
+      const result = await service.updateDoctor(
+        'doctor-uuid',
+        dto,
+        'admin-uuid',
+      );
 
       expect(result).toBeDefined();
       expect(prisma.doctor.update).toHaveBeenCalled();
@@ -315,7 +319,10 @@ describe('AdminService', () => {
         .mockResolvedValueOnce(deactivatedDoctor);
       prisma.doctor.update.mockResolvedValue(deactivatedDoctor);
 
-      const result = await service.deactivateDoctor('doctor-uuid');
+      const result = await service.deactivateDoctor(
+        'doctor-uuid',
+        'admin-uuid',
+      );
 
       expect(result.isActive).toBe(false);
       expect(prisma.doctor.update).toHaveBeenCalledWith({

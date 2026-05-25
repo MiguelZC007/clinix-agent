@@ -4,8 +4,8 @@ node_modules
 .windsurf/
 a.out
 # Local Pi runtime state
-.atl/
+.atl
 .pi-lens/
-context.md
+
 progress.md
-HealthBrain HIS.html
+context.md

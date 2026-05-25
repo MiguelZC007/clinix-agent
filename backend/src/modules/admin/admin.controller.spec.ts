@@ -100,7 +100,7 @@ describe('AdminController', () => {
         new ConflictException('user-already-exists'),
       );
 
-      await expect(controller.createDoctor(dto)).rejects.toThrow(
+      await expect(controller.createDoctor(dto, mockUser)).rejects.toThrow(
         ConflictException,
       );
     });
@@ -156,7 +156,11 @@ describe('AdminController', () => {
 
       adminService.updateDoctor.mockResolvedValue(updatedResponse);
 
-      const result = await controller.updateDoctor('doctor-uuid', dto);
+      const result = await controller.updateDoctor(
+        'doctor-uuid',
+        dto,
+        mockUser,
+      );
 
       expect(result.licenseNumber).toBe('MP-99999');
       expect(adminService.updateDoctor).toHaveBeenCalledWith(
