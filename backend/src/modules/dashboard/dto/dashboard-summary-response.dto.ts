@@ -22,7 +22,8 @@ export class RecentConsultationDto {
 
 export class DashboardSummaryDto {
   @ApiProperty({
-    description: 'Cantidad de pacientes distintos con al menos una cita o historia con el doctor',
+    description:
+      'Cantidad de pacientes distintos con al menos una cita o historia con el doctor',
   })
   patientsCount: number;
 

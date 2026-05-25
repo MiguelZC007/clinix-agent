@@ -286,7 +286,9 @@ export class AdminService {
         action: 'DEACTIVATE',
         entityType: 'Doctor',
         entityId: id,
-        previousState: this.sanitizeForAudit(this.mapToDoctorResponse(existingRaw)),
+        previousState: this.sanitizeForAudit(
+          this.mapToDoctorResponse(existingRaw),
+        ),
         newState: this.sanitizeForAudit(response),
         result: 'SUCCESS',
       });
@@ -332,7 +334,9 @@ export class AdminService {
         action: 'ACTIVATE',
         entityType: 'Doctor',
         entityId: id,
-        previousState: this.sanitizeForAudit(this.mapToDoctorResponse(existingRaw)),
+        previousState: this.sanitizeForAudit(
+          this.mapToDoctorResponse(existingRaw),
+        ),
         newState: this.sanitizeForAudit(response),
         result: 'SUCCESS',
       });
@@ -389,9 +393,7 @@ export class AdminService {
     };
   }
 
-  private sanitizeForAudit(
-    dto: DoctorResponseDto,
-  ): Record<string, unknown> {
+  private sanitizeForAudit(dto: DoctorResponseDto): Record<string, unknown> {
     return {
       id: dto.id,
       email: dto.email,

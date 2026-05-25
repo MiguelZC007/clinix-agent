@@ -1,0 +1,160 @@
+{
+  "files": {
+    "src/modules/admin/admin.service.spec.ts": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 1
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-16T03:59:22.892Z"
+    },
+    "src/modules/appointment/appointment.service.spec.ts": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 1
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-16T03:59:41.591Z"
+    },
+    "src/modules/audit/audit.service.spec.ts": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 1
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-16T04:00:00.629Z"
+    },
+    "src/modules/auth/guards/roles.guard.spec.ts": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 1
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-16T04:00:24.973Z"
+    },
+    "src/modules/clinic-history/clinic-history.service.spec.ts": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 1
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-16T04:00:43.481Z"
+    },
+    "src/modules/dashboard/dashboard.service.spec.ts": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 1
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-16T04:01:04.497Z"
+    },
+    "src/modules/openai/structuring.service.spec.ts": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 1
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-05-16T04:01:28.780Z"
+    },
+    "src/prisma/__mocks__/prisma.service.mock.ts": {
+      "modifiedRanges": [
+        {
+          "start": 1,
+          "end": 1
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-05-16T04:01:59.407Z"
+    },
+    "src/modules/twilio/guards/twilio-webhook.guard.spec.ts": {
+      "modifiedRanges": [
+        {
+          "start": 58,
+          "end": 58
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-05-16T04:02:17.500Z"
+    },
+    "test/anamnesis-conversation-flow.e2e-spec.ts": {
+      "modifiedRanges": [
+        {
+          "start": 27,
+          "end": 27
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-16T04:02:35.312Z"
+    },
+    "src/modules/clinic-history/clinic-history.controller.ts": {
+      "modifiedRanges": [
+        {
+          "start": 26,
+          "end": 29
+        }
+      ],
+      "importsChanged": true,
+      "lastEdit": "2026-05-16T04:02:53.291Z"
+    },
+    "src/modules/admin/dto/doctor-list-query.dto.ts": {
+      "modifiedRanges": [
+        {
+          "start": 55,
+          "end": 55
+        },
+        {
+          "start": 58,
+          "end": 58
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-05-16T04:03:10.153Z"
+    },
+    "src/modules/auth/guards/roles.guard.ts": {
+      "modifiedRanges": [
+        {
+          "start": 22,
+          "end": 25
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-05-16T04:03:28.000Z"
+    },
+    "src/modules/clinic-history/dto/create-clinic-history-without-appointment.dto.ts": {
+      "modifiedRanges": [
+        {
+          "start": 58,
+          "end": 61
+        },
+        {
+          "start": 69,
+          "end": 69
+        },
+        {
+          "start": 72,
+          "end": 75
+        }
+      ],
+      "importsChanged": false,
+      "lastEdit": "2026-05-16T04:04:05.116Z"
+    }
+  },
+  "turnCycles": 0,
+  "maxCycles": 3,
+  "lastUpdated": "2026-05-16T04:04:05.116Z",
+  "sessionId": "lens-mp7t8nkx-3d57b5b9"
+}

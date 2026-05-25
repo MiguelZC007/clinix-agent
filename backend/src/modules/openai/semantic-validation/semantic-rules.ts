@@ -130,7 +130,11 @@ export function evaluateNonInformativeContent(
 ): SemanticViolation[] {
   const violations: SemanticViolation[] = [];
 
-  const visit = (value: unknown, currentPath: string, policyPath: string): void => {
+  const visit = (
+    value: unknown,
+    currentPath: string,
+    policyPath: string,
+  ): void => {
     if (typeof value === 'string') {
       if (isPlaceholder(value) && !isNoReferidoAllowedField(policyPath)) {
         violations.push({
@@ -150,11 +154,13 @@ export function evaluateNonInformativeContent(
     }
 
     if (value && typeof value === 'object') {
-      Object.entries(value as Record<string, unknown>).forEach(([key, nested]) => {
-        const nextCurrentPath = currentPath ? `${currentPath}.${key}` : key;
-        const nextPolicyPath = policyPath ? `${policyPath}.${key}` : key;
-        visit(nested, nextCurrentPath, nextPolicyPath);
-      });
+      Object.entries(value as Record<string, unknown>).forEach(
+        ([key, nested]) => {
+          const nextCurrentPath = currentPath ? `${currentPath}.${key}` : key;
+          const nextPolicyPath = policyPath ? `${policyPath}.${key}` : key;
+          visit(nested, nextCurrentPath, nextPolicyPath);
+        },
+      );
     }
   };
 

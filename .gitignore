@@ -7,3 +7,6 @@ node_modules
 a.out
 # Local Pi runtime state
 .atl
+
+progress.md
+context.md

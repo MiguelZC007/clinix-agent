@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
@@ -57,7 +58,10 @@ describe('AdminController', () => {
       providers: [
         { provide: AdminService, useValue: mockAdminService },
         { provide: AuditService, useValue: mockAuditService },
-        { provide: RolesGuard, useValue: { canActivate: jest.fn().mockReturnValue(true) } },
+        {
+          provide: RolesGuard,
+          useValue: { canActivate: jest.fn().mockReturnValue(true) },
+        },
       ],
     }).compile();
 
@@ -104,9 +108,9 @@ describe('AdminController', () => {
         new ConflictException('user-already-exists'),
       );
 
-      await expect(
-        controller.createDoctor(dto, mockUser),
-      ).rejects.toThrow(ConflictException);
+      await expect(controller.createDoctor(dto, mockUser)).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 
@@ -144,9 +148,9 @@ describe('AdminController', () => {
         new NotFoundException('doctor-not-found'),
       );
 
-      await expect(
-        controller.findOneDoctor('non-existent'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(controller.findOneDoctor('non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -160,7 +164,11 @@ describe('AdminController', () => {
 
       adminService.updateDoctor.mockResolvedValue(updatedResponse);
 
-      const result = await controller.updateDoctor('doctor-uuid', dto, mockUser);
+      const result = await controller.updateDoctor(
+        'doctor-uuid',
+        dto,
+        mockUser,
+      );
 
       expect(result.licenseNumber).toBe('MP-99999');
       expect(adminService.updateDoctor).toHaveBeenCalledWith(
@@ -275,9 +283,9 @@ describe('AdminController', () => {
         new NotFoundException('audit-log-not-found'),
       );
 
-      await expect(
-        controller.findOneAuditLog('non-existent'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(controller.findOneAuditLog('non-existent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

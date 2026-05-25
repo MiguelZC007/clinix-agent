@@ -75,7 +75,9 @@ describe('semantic-rules', () => {
       });
 
       expect(
-        violations.some((violation) => violation.path === 'diagnostics[0].description'),
+        violations.some(
+          (violation) => violation.path === 'diagnostics[0].description',
+        ),
       ).toBe(false);
     });
   });

@@ -55,7 +55,10 @@ export class CreateClinicHistoryWithoutAppointmentDto {
     example: '550e8400-e29b-41d4-a716-446655440001',
     required: false,
   })
-  @ValidateIf((o) => !isInteger(o.patientNumber) || !isInteger(o.specialtyCode))
+  @ValidateIf(
+    (o: CreateClinicHistoryWithoutAppointmentDto) =>
+      !isInteger(o.patientNumber) || !isInteger(o.specialtyCode),
+  )
   @IsNotEmpty({ message: 'El ID del paciente es requerido' })
   @IsUUID('4', { message: 'El ID del paciente debe ser un UUID válido' })
   patientId?: string;
@@ -66,7 +69,10 @@ export class CreateClinicHistoryWithoutAppointmentDto {
     example: '550e8400-e29b-41d4-a716-446655440002',
     required: false,
   })
-  @ValidateIf((o) => !isInteger(o.patientNumber) || !isInteger(o.specialtyCode))
+  @ValidateIf(
+    (o: CreateClinicHistoryWithoutAppointmentDto) =>
+      !isInteger(o.patientNumber) || !isInteger(o.specialtyCode),
+  )
   @IsNotEmpty({ message: 'El ID de la especialidad es requerido' })
   @IsUUID('4', { message: 'El ID de la especialidad debe ser un UUID válido' })
   specialtyId?: string;

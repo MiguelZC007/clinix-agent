@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 const mockChatCompletionsCreate = jest.fn();
 
 jest.mock('openai', () => ({
@@ -314,7 +315,9 @@ describe('StructuringService', () => {
           message: {
             content: JSON.stringify({
               ...validPayload,
-              diagnostics: [{ name: 'No-Referido', description: 'episodio agudo' }],
+              diagnostics: [
+                { name: 'No-Referido', description: 'episodio agudo' },
+              ],
               symptoms: ['n / r'],
             }),
           },

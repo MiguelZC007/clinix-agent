@@ -1,7 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ClinicHistoryFilterOptionDoctorDto {
-  @ApiProperty({ description: 'ID del doctor', example: '550e8400-e29b-41d4-a716-446655440001' })
+  @ApiProperty({
+    description: 'ID del doctor',
+    example: '550e8400-e29b-41d4-a716-446655440001',
+  })
   id: string;
 
   @ApiProperty({ description: 'Nombre del doctor', example: 'María' })
@@ -12,10 +15,16 @@ export class ClinicHistoryFilterOptionDoctorDto {
 }
 
 export class ClinicHistoryFilterOptionSpecialtyDto {
-  @ApiProperty({ description: 'ID de la especialidad', example: '550e8400-e29b-41d4-a716-446655440002' })
+  @ApiProperty({
+    description: 'ID de la especialidad',
+    example: '550e8400-e29b-41d4-a716-446655440002',
+  })
   id: string;
 
-  @ApiProperty({ description: 'Nombre de la especialidad', example: 'Cardiología' })
+  @ApiProperty({
+    description: 'Nombre de la especialidad',
+    example: 'Cardiología',
+  })
   name: string;
 }
 

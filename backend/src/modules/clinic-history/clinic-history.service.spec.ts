@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   ConflictException,
@@ -522,7 +523,9 @@ describe('ClinicHistoryService', () => {
     });
 
     it('debe usar una consulta liviana sin transaction para el listado paginado', async () => {
-      prisma.clinicHistory.findMany.mockResolvedValue([mockClinicHistoryListItem]);
+      prisma.clinicHistory.findMany.mockResolvedValue([
+        mockClinicHistoryListItem,
+      ]);
 
       await service.findAll({ page: 1, pageSize: 10 }, 'doctor-uuid');
 
@@ -575,7 +578,9 @@ describe('ClinicHistoryService', () => {
     });
 
     it('debe retornar items livianos sin detalles completos en el listado', async () => {
-      prisma.clinicHistory.findMany.mockResolvedValue([mockClinicHistoryListItem]);
+      prisma.clinicHistory.findMany.mockResolvedValue([
+        mockClinicHistoryListItem,
+      ]);
 
       const result = await service.findAll(
         { page: 1, pageSize: 10 },
@@ -824,9 +829,8 @@ describe('ClinicHistoryService', () => {
               findUnique: prisma.appointment.findUnique,
             },
             patient: {
-              findUnique: prisma.patient.findUnique.mockResolvedValue(
-                patientWithData,
-              ),
+              findUnique:
+                prisma.patient.findUnique.mockResolvedValue(patientWithData),
             },
             clinicHistory: {
               create: prisma.clinicHistory.create,
@@ -897,8 +901,13 @@ describe('ClinicHistoryService', () => {
           fail('Expected BadRequestException to be thrown');
         } catch (error) {
           expect(error).toBeInstanceOf(BadRequestException);
-          const response = (error as BadRequestException).getResponse() as Record<string, unknown>;
-          expect(response).toHaveProperty('code', 'PRESCRIPTION_ALLERGY_CONFLICT');
+          const response = (
+            error as BadRequestException
+          ).getResponse() as Record<string, unknown>;
+          expect(response).toHaveProperty(
+            'code',
+            'PRESCRIPTION_ALLERGY_CONFLICT',
+          );
           expect(response).toHaveProperty('conflicts');
           const conflicts = response.conflicts as PrescriptionConflict[];
           expect(conflicts).toBeInstanceOf(Array);
@@ -907,7 +916,10 @@ describe('ClinicHistoryService', () => {
           conflicts.forEach((conflict) => {
             expect(conflict).toHaveProperty('medication');
             expect(conflict).toHaveProperty('matchedAgainst');
-            expect(conflict).toHaveProperty('type', PrescriptionConflictType.ALLERGY);
+            expect(conflict).toHaveProperty(
+              'type',
+              PrescriptionConflictType.ALLERGY,
+            );
           });
         }
       });
@@ -954,7 +966,10 @@ describe('ClinicHistoryService', () => {
           },
         });
 
-        const result = await service.create(createDtoWithPrescription, 'doctor-uuid');
+        const result = await service.create(
+          createDtoWithPrescription,
+          'doctor-uuid',
+        );
         expect(result).toBeDefined();
         expect(result.prescription).toBeDefined();
         expect(result.warnings ?? []).toHaveLength(0);
@@ -1027,12 +1042,17 @@ describe('ClinicHistoryService', () => {
           },
         });
 
-        const result = await service.create(createDtoWithPrescription, 'doctor-uuid');
+        const result = await service.create(
+          createDtoWithPrescription,
+          'doctor-uuid',
+        );
 
         expect(result).toBeDefined();
         expect(result.prescription).toBeDefined();
         expect(result).toHaveProperty('warnings');
-        const warnings = (result as unknown as { warnings: PrescriptionConflict[] }).warnings;
+        const warnings = (
+          result as unknown as { warnings: PrescriptionConflict[] }
+        ).warnings;
         expect(warnings).toBeInstanceOf(Array);
         expect(warnings.length).toBeGreaterThan(0);
         expect(warnings[0].type).toBe(PrescriptionConflictType.MEDICATION);
@@ -1090,7 +1110,9 @@ describe('ClinicHistoryService', () => {
 
         expect(result).toBeDefined();
         expect(result).toHaveProperty('warnings');
-        const warnings = (result as unknown as { warnings: PrescriptionConflict[] }).warnings;
+        const warnings = (
+          result as unknown as { warnings: PrescriptionConflict[] }
+        ).warnings;
         expect(warnings.length).toBe(2);
       });
 
@@ -1112,7 +1134,10 @@ describe('ClinicHistoryService', () => {
           },
         });
 
-        const result = await service.create(createDtoWithPrescription, 'doctor-uuid');
+        const result = await service.create(
+          createDtoWithPrescription,
+          'doctor-uuid',
+        );
 
         expect(result).toBeDefined();
         expect(result.warnings ?? []).toHaveLength(0);
@@ -1121,40 +1146,43 @@ describe('ClinicHistoryService', () => {
 
     describe('createWithoutAppointment with prescription - allergy blocking', () => {
       // DTO for allergy blocking tests (patient has allergy to penicilina)
-      const createWithoutAppointmentDtoWithAllergy: CreateClinicHistoryWithoutAppointmentDto = {
-        patientId: 'patient-uuid',
-        specialtyId: 'specialty-uuid',
-        consultationReason: 'Dolor de cabeza',
-        symptoms: ['dolor', 'mareos'],
-        treatment: 'Reposo y medicación',
-        diagnostics: [
-          { name: 'Migraña', description: 'Dolor de cabeza crónico' },
-        ],
-        physicalExams: [{ name: 'Examen neurológico', description: 'Normal' }],
-        vitalSigns: [
-          {
-            name: 'Presión arterial',
-            value: '120/80',
-            unit: 'mmHg',
-            measurement: 'sistólica/diastólica',
-          },
-        ],
-        prescription: {
-          name: 'Receta para migraña',
-          description: 'Tratamiento para migraña',
-          medications: [
+      const createWithoutAppointmentDtoWithAllergy: CreateClinicHistoryWithoutAppointmentDto =
+        {
+          patientId: 'patient-uuid',
+          specialtyId: 'specialty-uuid',
+          consultationReason: 'Dolor de cabeza',
+          symptoms: ['dolor', 'mareos'],
+          treatment: 'Reposo y medicación',
+          diagnostics: [
+            { name: 'Migraña', description: 'Dolor de cabeza crónico' },
+          ],
+          physicalExams: [
+            { name: 'Examen neurológico', description: 'Normal' },
+          ],
+          vitalSigns: [
             {
-              name: 'Penicilina V',
-              quantity: 30,
-              unit: 'tabletas',
-              frequency: 'Cada 8 horas',
-              duration: '7 días',
-              indications: 'Tomar con alimentos',
-              administrationRoute: 'Oral',
+              name: 'Presión arterial',
+              value: '120/80',
+              unit: 'mmHg',
+              measurement: 'sistólica/diastólica',
             },
           ],
-        },
-      };
+          prescription: {
+            name: 'Receta para migraña',
+            description: 'Tratamiento para migraña',
+            medications: [
+              {
+                name: 'Penicilina V',
+                quantity: 30,
+                unit: 'tabletas',
+                frequency: 'Cada 8 horas',
+                duration: '7 días',
+                indications: 'Tomar con alimentos',
+                administrationRoute: 'Oral',
+              },
+            ],
+          },
+        };
 
       beforeEach(() => {
         prisma.$transaction.mockImplementation(
@@ -1195,7 +1223,10 @@ describe('ClinicHistoryService', () => {
         });
 
         await expect(
-          service.createWithoutAppointment('doctor-uuid', createWithoutAppointmentDtoWithAllergy),
+          service.createWithoutAppointment(
+            'doctor-uuid',
+            createWithoutAppointmentDtoWithAllergy,
+          ),
         ).rejects.toThrow(BadRequestException);
       });
 
@@ -1255,7 +1286,9 @@ describe('ClinicHistoryService', () => {
 
         expect(result).toBeDefined();
         expect(result).toHaveProperty('warnings');
-        const warnings = (result as unknown as { warnings: PrescriptionConflict[] }).warnings;
+        const warnings = (
+          result as unknown as { warnings: PrescriptionConflict[] }
+        ).warnings;
         expect(warnings.length).toBeGreaterThan(0);
         expect(warnings[0].type).toBe(PrescriptionConflictType.MEDICATION);
       });
@@ -1293,8 +1326,12 @@ describe('ClinicHistoryService', () => {
           consultationReason: 'Dolor de cabeza',
           symptoms: ['dolor', 'mareos'],
           treatment: 'Reposo',
-          diagnostics: [{ name: 'Migraña', description: 'Dolor de cabeza crónico' }],
-          physicalExams: [{ name: 'Examen neurológico', description: 'Normal' }],
+          diagnostics: [
+            { name: 'Migraña', description: 'Dolor de cabeza crónico' },
+          ],
+          physicalExams: [
+            { name: 'Examen neurológico', description: 'Normal' },
+          ],
           vitalSigns: [
             {
               name: 'Presión arterial',
@@ -1341,8 +1378,12 @@ describe('ClinicHistoryService', () => {
           consultationReason: 'Dolor de cabeza',
           symptoms: ['dolor', 'mareos'],
           treatment: 'Reposo',
-          diagnostics: [{ name: 'Migraña', description: 'Dolor de cabeza crónico' }],
-          physicalExams: [{ name: 'Examen neurológico', description: 'Normal' }],
+          diagnostics: [
+            { name: 'Migraña', description: 'Dolor de cabeza crónico' },
+          ],
+          physicalExams: [
+            { name: 'Examen neurológico', description: 'Normal' },
+          ],
           vitalSigns: [
             {
               name: 'Presión arterial',
@@ -1391,8 +1432,12 @@ describe('ClinicHistoryService', () => {
           consultationReason: 'Dolor de cabeza',
           symptoms: ['dolor', 'mareos'],
           treatment: 'Reposo',
-          diagnostics: [{ name: 'Migraña', description: 'Dolor de cabeza crónico' }],
-          physicalExams: [{ name: 'Examen neurológico', description: 'Normal' }],
+          diagnostics: [
+            { name: 'Migraña', description: 'Dolor de cabeza crónico' },
+          ],
+          physicalExams: [
+            { name: 'Examen neurológico', description: 'Normal' },
+          ],
           vitalSigns: [
             {
               name: 'Presión arterial',

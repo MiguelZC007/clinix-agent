@@ -17,7 +17,7 @@ Load this skill when writing, changing, debugging, or verifying backend tests in
 - Use TDD for new behavior: RED test first, GREEN minimum implementation, then refactor.
 - Keep unit tests isolated with mocked dependencies; use real DB only for integration/API tests.
 - Do not mark complete with failing tests, skipped tests, `it.only`, or uncovered critical paths.
-- Before commit/PR, obey checkout runtime gates from `.opencode/rules/checkout-runtime-gate.md`.
+- Before commit/PR, obey dev runtime gates from `.opencode/rules/dev-runtime-gate.md`.
 
 ## Decision Gates
 
@@ -45,5 +45,5 @@ Return test files changed, behavior covered, commands run, pass/fail evidence, c
 
 - `.opencode/rules/backend-testing.md`
 - `.opencode/rules/test-mandate.md`
-- `.opencode/rules/checkout-runtime-gate.md`
+- `.opencode/rules/dev-runtime-gate.md`
 - `backend/package.json`

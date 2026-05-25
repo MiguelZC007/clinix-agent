@@ -111,74 +111,76 @@ describe('Validación técnica de anamnesis simuladas (e2e)', () => {
     await app.close();
   }, 60000);
 
-  it(
-    'registra 100 anamnesis simuladas y genera métricas de completitud y tiempo del prototipo',
-    async () => {
-      const durationsMs: number[] = [];
-      let successfulRecords = 0;
-      let completedStructuredFields = 0;
-      const failedCases: Array<{ index: number; status: number; body: unknown }> = [];
+  it('registra 100 anamnesis simuladas y genera métricas de completitud y tiempo del prototipo', async () => {
+    const durationsMs: number[] = [];
+    let successfulRecords = 0;
+    let completedStructuredFields = 0;
+    const failedCases: Array<{ index: number; status: number; body: unknown }> =
+      [];
 
-      for (const [index, validationCase] of validationCases.entries()) {
-        const start = process.hrtime.bigint();
-        const response = await request(httpServer)
-          .post('/v1/clinic-histories')
-          .set('Authorization', `Bearer ${accessToken}`)
-          .send(validationCase.payload);
-        const end = process.hrtime.bigint();
+    for (const [index, validationCase] of validationCases.entries()) {
+      const start = process.hrtime.bigint();
+      const response = await request(httpServer)
+        .post('/v1/clinic-histories')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(validationCase.payload);
+      const end = process.hrtime.bigint();
 
-        durationsMs.push(Number(end - start) / 1_000_000);
+      durationsMs.push(Number(end - start) / 1_000_000);
 
-        if (response.status !== 201) {
-          failedCases.push({ index: index + 1, status: response.status, body: response.body });
-          continue;
-        }
-
-        const body = response.body as ClinicHistoryResponseBody;
-        expect(body.success).toBe(true);
-        expect(body.data?.id).toBeDefined();
-
-        successfulRecords += 1;
-        completedStructuredFields += countCompletedStructuredFields(body);
+      if (response.status !== 201) {
+        failedCases.push({
+          index: index + 1,
+          status: response.status,
+          body: response.body,
+        });
+        continue;
       }
 
-      const totalExpectedFields = CASE_COUNT * EXPECTED_STRUCTURED_FIELDS_PER_CASE;
-      const completionRate = (completedStructuredFields / totalExpectedFields) * 100;
-      const successRate = (successfulRecords / CASE_COUNT) * 100;
-      const averageTimeMs = average(durationsMs);
-      const sortedDurations = [...durationsMs].sort((a, b) => a - b);
+      const body = response.body as ClinicHistoryResponseBody;
+      expect(body.success).toBe(true);
+      expect(body.data?.id).toBeDefined();
 
-      const report = {
-        validationType: 'technical-validation-with-simulated-anamnesis',
-        note:
-          'Resultados de validación técnica con casos clínicos simulados; no representan validación clínica ni usabilidad con médicos reales.',
-        sampleSize: CASE_COUNT,
-        successfulRecords,
-        failedRecords: failedCases.length,
-        successRatePercent: round(successRate),
-        expectedStructuredFieldsPerCase: EXPECTED_STRUCTURED_FIELDS_PER_CASE,
-        completedStructuredFields,
-        totalExpectedFields,
-        completionRatePercent: round(completionRate),
-        timing: {
-          measurementMethod: 'Jest e2e + supertest + process.hrtime.bigint()',
-          averageMs: round(averageTimeMs),
-          minMs: round(sortedDurations[0] ?? 0),
-          maxMs: round(sortedDurations[sortedDurations.length - 1] ?? 0),
-          p95Ms: round(percentile(sortedDurations, 0.95)),
-        },
-        generatedAt: new Date().toISOString(),
-        failedCases,
-      };
+      successfulRecords += 1;
+      completedStructuredFields += countCompletedStructuredFields(body);
+    }
 
-      writeValidationReport(report);
+    const totalExpectedFields =
+      CASE_COUNT * EXPECTED_STRUCTURED_FIELDS_PER_CASE;
+    const completionRate =
+      (completedStructuredFields / totalExpectedFields) * 100;
+    const successRate = (successfulRecords / CASE_COUNT) * 100;
+    const averageTimeMs = average(durationsMs);
+    const sortedDurations = [...durationsMs].sort((a, b) => a - b);
 
-      expect(failedCases).toEqual([]);
-      expect(successfulRecords).toBe(CASE_COUNT);
-      expect(completionRate).toBe(100);
-    },
-    180000,
-  );
+    const report = {
+      validationType: 'technical-validation-with-simulated-anamnesis',
+      note: 'Resultados de validación técnica con casos clínicos simulados; no representan validación clínica ni usabilidad con médicos reales.',
+      sampleSize: CASE_COUNT,
+      successfulRecords,
+      failedRecords: failedCases.length,
+      successRatePercent: round(successRate),
+      expectedStructuredFieldsPerCase: EXPECTED_STRUCTURED_FIELDS_PER_CASE,
+      completedStructuredFields,
+      totalExpectedFields,
+      completionRatePercent: round(completionRate),
+      timing: {
+        measurementMethod: 'Jest e2e + supertest + process.hrtime.bigint()',
+        averageMs: round(averageTimeMs),
+        minMs: round(sortedDurations[0] ?? 0),
+        maxMs: round(sortedDurations[sortedDurations.length - 1] ?? 0),
+        p95Ms: round(percentile(sortedDurations, 0.95)),
+      },
+      generatedAt: new Date().toISOString(),
+      failedCases,
+    };
+
+    writeValidationReport(report);
+
+    expect(failedCases).toEqual([]);
+    expect(successfulRecords).toBe(CASE_COUNT);
+    expect(completionRate).toBe(100);
+  }, 180000);
 
   async function setupFixture(): Promise<void> {
     const timestamp = Date.now();
@@ -231,11 +233,19 @@ describe('Validación técnica de anamnesis simuladas (e2e)', () => {
             create: {
               registeredByDoctorId: doctorId,
               gender: index % 2 === 0 ? 'female' : 'male',
-              birthDate: new Date(1970 + (index % 35), index % 12, (index % 27) + 1),
+              birthDate: new Date(
+                1970 + (index % 35),
+                index % 12,
+                (index % 27) + 1,
+              ),
               allergies: [],
               medications: [],
-              medicalHistory: [clinicalScenarios[index % clinicalScenarios.length].history],
-              familyHistory: ['Sin antecedentes familiares relevantes declarados'],
+              medicalHistory: [
+                clinicalScenarios[index % clinicalScenarios.length].history,
+              ],
+              familyHistory: [
+                'Sin antecedentes familiares relevantes declarados',
+              ],
             },
           },
         },
@@ -245,7 +255,9 @@ describe('Validación técnica de anamnesis simuladas (e2e)', () => {
       patientUserIds.push(patientUser.id);
       patientIds.push(patientUser.patient!.id);
 
-      const startAppointment = new Date(Date.UTC(2026, 0, 1, 8 + (index % 8), index % 60));
+      const startAppointment = new Date(
+        Date.UTC(2026, 0, 1, 8 + (index % 8), index % 60),
+      );
       const appointment = await prisma.appointment.create({
         data: {
           patientId: patientUser.patient!.id,
@@ -279,12 +291,24 @@ describe('Validación técnica de anamnesis simuladas (e2e)', () => {
     await prisma.prescriptionMedication.deleteMany({
       where: { prescriptionId: { in: prescriptionIds } },
     });
-    await prisma.prescription.deleteMany({ where: { id: { in: prescriptionIds } } });
-    await prisma.vitalSign.deleteMany({ where: { clinicHistoryId: { in: historyIds } } });
-    await prisma.physicalExam.deleteMany({ where: { clinicHistoryId: { in: historyIds } } });
-    await prisma.diagnostic.deleteMany({ where: { clinicHistoryId: { in: historyIds } } });
-    await prisma.clinicHistory.deleteMany({ where: { id: { in: historyIds } } });
-    await prisma.appointment.deleteMany({ where: { id: { in: appointmentIds } } });
+    await prisma.prescription.deleteMany({
+      where: { id: { in: prescriptionIds } },
+    });
+    await prisma.vitalSign.deleteMany({
+      where: { clinicHistoryId: { in: historyIds } },
+    });
+    await prisma.physicalExam.deleteMany({
+      where: { clinicHistoryId: { in: historyIds } },
+    });
+    await prisma.diagnostic.deleteMany({
+      where: { clinicHistoryId: { in: historyIds } },
+    });
+    await prisma.clinicHistory.deleteMany({
+      where: { id: { in: historyIds } },
+    });
+    await prisma.appointment.deleteMany({
+      where: { id: { in: appointmentIds } },
+    });
     await prisma.patient.deleteMany({ where: { id: { in: patientIds } } });
     await prisma.user.deleteMany({ where: { id: { in: patientUserIds } } });
     await prisma.doctor.deleteMany({ where: { id: doctorId } });
@@ -293,7 +317,16 @@ describe('Validación técnica de anamnesis simuladas (e2e)', () => {
   }
 });
 
-const patientNames = ['Ana', 'Carlos', 'María', 'José', 'Lucía', 'Miguel', 'Sofía', 'Diego'];
+const patientNames = [
+  'Ana',
+  'Carlos',
+  'María',
+  'José',
+  'Lucía',
+  'Miguel',
+  'Sofía',
+  'Diego',
+];
 
 const clinicalScenarios = [
   {
@@ -301,32 +334,39 @@ const clinicalScenarios = [
     symptoms: ['dolor abdominal', 'náuseas', 'distensión abdominal'],
     diagnostic: 'Gastroenteritis aguda probable',
     history: 'Sin antecedentes digestivos de importancia',
-    treatment: 'Hidratación oral, dieta blanda y control de signos de alarma durante 48 horas',
+    treatment:
+      'Hidratación oral, dieta blanda y control de signos de alarma durante 48 horas',
   },
   {
     reason: 'Cefalea persistente asociada a tensión cervical',
     symptoms: ['cefalea', 'dolor cervical', 'fotofobia leve'],
     diagnostic: 'Cefalea tensional',
     history: 'Episodios previos de cefalea ocasional',
-    treatment: 'Reposo relativo, higiene del sueño y analgésico según tolerancia clínica',
+    treatment:
+      'Reposo relativo, higiene del sueño y analgésico según tolerancia clínica',
   },
   {
     reason: 'Tos seca y congestión nasal de tres días',
     symptoms: ['tos seca', 'congestión nasal', 'odinofagia'],
     diagnostic: 'Infección respiratoria alta',
     history: 'Sin antecedentes respiratorios crónicos',
-    treatment: 'Manejo sintomático, líquidos abundantes y reevaluación si presenta fiebre persistente',
+    treatment:
+      'Manejo sintomático, líquidos abundantes y reevaluación si presenta fiebre persistente',
   },
   {
     reason: 'Dolor lumbar posterior a esfuerzo físico',
     symptoms: ['lumbalgia', 'rigidez lumbar', 'dolor al movimiento'],
     diagnostic: 'Lumbalgia mecánica',
     history: 'Antecedente de dolor lumbar leve intermitente',
-    treatment: 'Reposo relativo, ejercicios suaves y analgesia por corto periodo',
+    treatment:
+      'Reposo relativo, ejercicios suaves y analgesia por corto periodo',
   },
 ];
 
-function buildAnamnesisPayload(appointmentId: string, index: number): Record<string, unknown> {
+function buildAnamnesisPayload(
+  appointmentId: string,
+  index: number,
+): Record<string, unknown> {
   const scenario = clinicalScenarios[index % clinicalScenarios.length];
 
   return {
@@ -343,18 +383,40 @@ function buildAnamnesisPayload(appointmentId: string, index: number): Record<str
     physicalExams: [
       {
         name: 'Examen físico general',
-        description: 'Paciente consciente, orientado, hidratado y hemodinámicamente estable.',
+        description:
+          'Paciente consciente, orientado, hidratado y hemodinámicamente estable.',
       },
     ],
     vitalSigns: [
-      { name: 'Presión arterial', value: `${110 + (index % 20)}/${70 + (index % 10)}`, unit: 'mmHg', measurement: 'sistólica/diastólica' },
-      { name: 'Frecuencia cardíaca', value: `${68 + (index % 18)}`, unit: 'lpm', measurement: 'latidos por minuto' },
-      { name: 'Temperatura', value: `${36 + (index % 10) / 10}`, unit: '°C', measurement: 'axilar' },
-      { name: 'Saturación de oxígeno', value: `${96 + (index % 4)}`, unit: '%', measurement: 'pulsioximetría' },
+      {
+        name: 'Presión arterial',
+        value: `${110 + (index % 20)}/${70 + (index % 10)}`,
+        unit: 'mmHg',
+        measurement: 'sistólica/diastólica',
+      },
+      {
+        name: 'Frecuencia cardíaca',
+        value: `${68 + (index % 18)}`,
+        unit: 'lpm',
+        measurement: 'latidos por minuto',
+      },
+      {
+        name: 'Temperatura',
+        value: `${36 + (index % 10) / 10}`,
+        unit: '°C',
+        measurement: 'axilar',
+      },
+      {
+        name: 'Saturación de oxígeno',
+        value: `${96 + (index % 4)}`,
+        unit: '%',
+        measurement: 'pulsioximetría',
+      },
     ],
     prescription: {
       name: `Receta caso simulado ${index + 1}`,
-      description: 'Tratamiento sintomático indicado para el caso clínico simulado.',
+      description:
+        'Tratamiento sintomático indicado para el caso clínico simulado.',
       medications: [
         {
           name: index % 2 === 0 ? 'Paracetamol' : 'Ibuprofeno',
@@ -362,7 +424,8 @@ function buildAnamnesisPayload(appointmentId: string, index: number): Record<str
           unit: 'tabletas',
           frequency: 'Cada 8 horas',
           duration: '3 días',
-          indications: 'Tomar después de los alimentos y suspender ante reacción adversa.',
+          indications:
+            'Tomar después de los alimentos y suspender ante reacción adversa.',
           administrationRoute: 'Oral',
         },
       ],
@@ -370,42 +433,45 @@ function buildAnamnesisPayload(appointmentId: string, index: number): Record<str
   };
 }
 
-function countCompletedStructuredFields(body: ClinicHistoryResponseBody): number {
+function countCompletedStructuredFields(
+  body: ClinicHistoryResponseBody,
+): number {
   const history = body.data;
   if (!history) return 0;
 
   let completed = 0;
-  completed += Boolean(history.consultationReason) ? 1 : 0;
-  completed += Array.isArray(history.symptoms) && history.symptoms.length > 0 ? 1 : 0;
-  completed += Boolean(history.treatment) ? 1 : 0;
+  completed += history.consultationReason ? 1 : 0;
+  completed +=
+    Array.isArray(history.symptoms) && history.symptoms.length > 0 ? 1 : 0;
+  completed += history.treatment ? 1 : 0;
 
   const diagnostic = history.diagnostics?.[0];
-  completed += Boolean(diagnostic?.name) ? 1 : 0;
-  completed += Boolean(diagnostic?.description) ? 1 : 0;
+  completed += diagnostic?.name ? 1 : 0;
+  completed += diagnostic?.description ? 1 : 0;
 
   const physicalExam = history.physicalExams?.[0];
-  completed += Boolean(physicalExam?.name) ? 1 : 0;
-  completed += Boolean(physicalExam?.description) ? 1 : 0;
+  completed += physicalExam?.name ? 1 : 0;
+  completed += physicalExam?.description ? 1 : 0;
 
   for (const vitalSign of history.vitalSigns ?? []) {
-    completed += Boolean(vitalSign.name) ? 1 : 0;
-    completed += Boolean(vitalSign.value) ? 1 : 0;
-    completed += Boolean(vitalSign.unit) ? 1 : 0;
-    completed += Boolean(vitalSign.measurement) ? 1 : 0;
+    completed += vitalSign.name ? 1 : 0;
+    completed += vitalSign.value ? 1 : 0;
+    completed += vitalSign.unit ? 1 : 0;
+    completed += vitalSign.measurement ? 1 : 0;
   }
 
   const prescription = history.prescription;
-  completed += Boolean(prescription?.name) ? 1 : 0;
-  completed += Boolean(prescription?.description) ? 1 : 0;
+  completed += prescription?.name ? 1 : 0;
+  completed += prescription?.description ? 1 : 0;
 
   const medication = prescription?.medications?.[0];
-  completed += Boolean(medication?.name) ? 1 : 0;
+  completed += medication?.name ? 1 : 0;
   completed += typeof medication?.quantity === 'number' ? 1 : 0;
-  completed += Boolean(medication?.unit) ? 1 : 0;
-  completed += Boolean(medication?.frequency) ? 1 : 0;
-  completed += Boolean(medication?.duration) ? 1 : 0;
-  completed += Boolean(medication?.indications) ? 1 : 0;
-  completed += Boolean(medication?.administrationRoute) ? 1 : 0;
+  completed += medication?.unit ? 1 : 0;
+  completed += medication?.frequency ? 1 : 0;
+  completed += medication?.duration ? 1 : 0;
+  completed += medication?.indications ? 1 : 0;
+  completed += medication?.administrationRoute ? 1 : 0;
 
   return completed;
 }

@@ -23,10 +23,7 @@ import {
 } from './clinic-history.service';
 import { CreateClinicHistoryDto } from './dto/create-clinic-history.dto';
 import { FindAllClinicHistoriesQueryDto } from './dto/find-all-clinic-histories-query.dto';
-import {
-  ClinicHistoryListItemDto,
-  ClinicHistoryResponseDto,
-} from './dto/clinic-history-response.dto';
+import { ClinicHistoryResponseDto } from './dto/clinic-history-response.dto';
 import { PatientClinicHistoryFilterOptionsDto } from './dto/patient-clinic-history-filter-options.dto';
 
 @ApiTags('Clinic Histories')
